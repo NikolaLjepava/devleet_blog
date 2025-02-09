@@ -18,14 +18,14 @@ export class SignupComponent {
       await this.authService.signUp(this.email, this.password);
       this.showVerification = true;
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('Registration error:', error);
     }
   }
 
   async confirmSignUp() {
     try {
       await this.authService.confirmSignUp(this.email, this.code);
-      alert('Signup successful! You can now log in.');
+      alert('Registration successful! You can now log in.');
     } catch (error) {
       console.error('Verification error:', error);
     }

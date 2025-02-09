@@ -1,1 +1,10 @@
-<p>signup works!</p>
+<div *ngIf="!showVerification">
+  <input type="email" [(ngModel)]="email" placeholder="Email" />
+  <input type="password" [(ngModel)]="password" placeholder="Password" />
+  <button (click)="signUp()">Sign Up</button>
+</div>
+
+<div *ngIf="showVerification">
+  <input type="text" [(ngModel)]="code" placeholder="Enter verification code" />
+  <button (click)="confirmSignUp()">Confirm</button>
+</div>
