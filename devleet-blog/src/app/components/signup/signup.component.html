@@ -1,10 +1,44 @@
-<div *ngIf="!showVerification">
-  <input type="email" [(ngModel)]="email" placeholder="Email" />
-  <input type="password" [(ngModel)]="password" placeholder="Password" />
-  <button (click)="signUp()">Sign Up</button>
-</div>
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Sign Up</h2> <!-- Added margin-bottom to the header -->
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4"> <!-- Adjusted width for responsiveness -->
+      <div class="card p-4 shadow-lg">
+        
+        <!-- Display error message if exists -->
+        <div *ngIf="errorMessage" class="alert alert-danger mb-3">
+          {{ errorMessage }}
+        </div>
 
-<div *ngIf="showVerification">
-  <input type="text" [(ngModel)]="code" placeholder="Enter verification code" />
-  <button (click)="confirmSignUp()">Confirm</button>
+        <!-- Email input -->
+        <div class="form-group mb-3">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            class="form-control"
+            [(ngModel)]="email"
+            placeholder="Enter your email"
+          />
+        </div>
+        
+        <!-- Password input -->
+        <div class="form-group mb-3">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            class="form-control"
+            [(ngModel)]="password"
+            placeholder="Enter your password"
+          />
+        </div>
+        
+        <!-- Sign Up Button -->
+        <button (click)="signUp()" class="btn btn-primary btn-block mb-3">Sign Up</button>
+        
+        <!-- Navigate to Login Link -->
+        <div class="text-center">
+          <button (click)="goToLogin()" class="btn btn-link">Already have an account? Log In</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
