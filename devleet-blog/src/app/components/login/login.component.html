@@ -1,1 +1,44 @@
-<p>login works!</p>
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Log In</h2> <!-- Added margin-bottom to the header -->
+  
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4"> <!-- Adjusted the width for responsiveness -->
+      <div class="card p-4 shadow-lg">
+        
+        <!-- Email input -->
+        <div class="form-group mb-3">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            class="form-control"
+            [(ngModel)]="email"
+            placeholder="Enter your email"
+            required
+          />
+        </div>
+        
+        <!-- Password input -->
+        <div class="form-group mb-3">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            class="form-control"
+            [(ngModel)]="password"
+            placeholder="Enter your password"
+            required
+          />
+        </div>
+        
+        <!-- Login Button -->
+        <button (click)="login()" class="btn btn-primary btn-block mb-3">Log In</button>
+        
+        <!-- Register Link -->
+        <div class="text-center">
+          <button (click)="goToSignup()" class="btn btn-link">Don't have an account? Register</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
