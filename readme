@@ -1,2 +1,6 @@
-test
-test2
+start app locally:
+
+1. check if you are in the right directory : cd "C:\Users\Nikola\Desktop\Devleet Blog\devleet_blog-1\devleet-blog"
+2. start the app : ng serve --open
+
+REST API endpoint: https://gocqije9g1.execute-api.eu-north-1.amazonaws.com/dev
