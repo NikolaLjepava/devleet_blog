@@ -18,12 +18,16 @@ export class AuthService {
 
   async signUp(email: string, password: string) {
     try {
-      return await Auth.signUp({
+      await Auth.signUp({
         username: email,
         password,
         attributes: { email },
       });
     } catch (error) {
+      // Check for specific error when user already exists
+      if (error.code === 'UsernameExistsException') {
+        throw new Error('This email is already registered. Please use a different email.');
+      }
       throw error;
     }
   }

@@ -1,26 +1,32 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { AppComponent } from './app.component';
 import { FormsModule } from '@angular/forms';
-
-import { CreateBlogComponent } from './components/create-blog/create-blog.component';
-import { UpdateBlogComponent } from './components/update-blog/update-blog.component';
-import { BlogListComponent } from './components/blog-list/blog-list.component';
-import { DeleteBlogComponent } from './components/delete-blog/delete-blog.component';
+import { AppComponent } from './app.component';
+import { HomeComponent } from './components/home/home.component';
+import { SignupComponent } from './components/signup/signup.component';
+import { LoginComponent } from './components/login/login.component';
+import { AppRoutingModule } from './app-routing.module';
+import { NavbarComponent } from './components/navbar/navbar.component';
+import { AuthService } from './services/auth.service';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';  // Import BrowserAnimationsModule
 
 @NgModule({
   declarations: [
     AppComponent,
-    CreateBlogComponent,
-    UpdateBlogComponent,
-    BlogListComponent,
-    DeleteBlogComponent
+    HomeComponent,
+    SignupComponent,
+    LoginComponent,
+    NavbarComponent
   ],
   imports: [
     BrowserModule,
-    FormsModule  // ✅ This fixes the "ngModel" error
+    FormsModule,
+    AppRoutingModule,
+    MatSnackBarModule,
+    BrowserAnimationsModule // Add BrowserAnimationsModule here
   ],
-  providers: [],
+  providers: [AuthService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

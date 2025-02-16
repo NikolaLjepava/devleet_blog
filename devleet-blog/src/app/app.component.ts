@@ -1,33 +1,44 @@
 import { Component, OnInit } from '@angular/core';
-import { AuthService } from './services/auth.service';
+import { Router } from '@angular/router';
+import { AuthService } from './services/auth.service';  // Make sure this import exists
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
+  isLoginMode = false;
   user: any = null;
-  message: string = '';
-  error: string = '';
 
-  constructor(private authService: AuthService) {}
+  constructor(private router: Router, private authService: AuthService) {}
 
   ngOnInit() {
-    this.checkUser(); // this part checks whether there is a logged in user upon page load
+    this.router.events.subscribe(() => {
+      // Check if the current path is "/login" or "/signup"
+      if (this.router.url === '/login') {
+        this.isLoginMode = true;
+      } else if (this.router.url === '/signup') {
+        this.isLoginMode = false;
+      }
+    });
+
+    this.authService.getCurrentUser().then((user) => {
+      this.user = user;
+    }).catch((err) => {
+      console.error('User not authenticated', err);
+    });
   }
 
-  async checkUser() {
-    this.user = await this.authService.getCurrentUser();
+  toggleMode() {
+    this.isLoginMode = !this.isLoginMode;
   }
 
-  async logout() {
-    try {
-      await this.authService.signOut();
+  logout() {
+    this.authService.signOut().then(() => {
       this.user = null;
-      this.message = 'You have logged out.';
-    } catch (err) {
-      this.error = 'Something went wrong. Refresh and try again.';
-    }
+      this.router.navigate(['/login']);  // Redirect after logout
+    }).catch((err) => {
+      console.error('Logout failed', err);
+    });
   }
 }
