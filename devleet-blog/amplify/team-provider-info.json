@@ -18,7 +18,11 @@
       "function": {
         "devleetblog": {
           "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
-          "s3Key": "amplify-builds/devleetblog-4f445168524b302b6f77-build.zip"
+          "s3Key": "amplify-builds/devleetblog-4f75674d675656493165-build.zip"
+        },
+        "checkIfAuthor": {
+          "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
+          "s3Key": "amplify-builds/checkIfAuthor-58412b66655a72707642-build.zip"
         }
       },
       "storage": {

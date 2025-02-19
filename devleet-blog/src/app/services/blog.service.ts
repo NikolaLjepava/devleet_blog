@@ -1,10 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, from, throwError } from 'rxjs';
+import { catchError, switchMap, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
-
-// This service is responsible for handling all communication between the Angular frontend
-// and the AWS REST API. It uses HTTP requests to fetch, create, update, and delete blog posts.
 
 @Injectable({
   providedIn: 'root',
@@ -14,45 +12,97 @@ export class BlogService {
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
-  private async getHeaders(): Promise<any> {
-    const currentUser = await this.authService.getCurrentUser();
-    const token = currentUser ? currentUser.signInUserSession.idToken.jwtToken : null;
-
-    return {
-      headers: new HttpHeaders({
-        'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : '', // if token exists, it adds it as a Bearer token in auth header
-      }),
-    };
+  private getHeaders(): Promise<HttpHeaders> {
+    return new Promise((resolve, reject) => {
+      this.authService.getCurrentUser()
+        .then((currentUser) => {
+          const token = currentUser ? currentUser.signInUserSession.idToken.jwtToken : null;
+          const headers = new HttpHeaders({
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          });
+          resolve(headers);
+        })
+        .catch((error) => {
+          console.error('Error fetching auth token:', error);
+          reject(error);
+        });
+    });
   }
 
   // Get all blog posts
-  async getPosts(): Promise<Observable<any>> {
-    const headers = await this.getHeaders();  // Await the headers
-    return this.http.get(`${this.apiUrl}/objects`, headers);  // Pass the headers
+  getPosts(): Observable<any> {
+    return from(this.getHeaders()).pipe(
+      switchMap((headers) => {
+        return this.http.get(`${this.apiUrl}`, { headers }).pipe(
+          tap(response => console.log('API Response:', response))
+        );
+      }),
+      catchError((error) => {
+        console.error('Error fetching posts:', error);
+        return throwError(() => new Error('Failed to fetch posts'));
+      })
+    );
   }
 
   // Get a single blog post by ID
-  async getPost(id: number): Promise<Observable<any>> {
-    const headers = await this.getHeaders();
-    return this.http.get(`${this.apiUrl}/object/${id}`, headers);
+  getPost(id: number): Observable<any> {
+    return from(this.getHeaders()).pipe(
+      switchMap((headers) => this.http.get(`${this.apiUrl}/${id}`, { headers })),
+      catchError((error) => {
+        console.error(`Error fetching post with ID ${id}:`, error);
+        return throwError(() => new Error(`Failed to fetch post with ID ${id}`));
+      })
+    );
   }
 
-  // Create a new blog post
-  async createPost(post: { title: string; content: string }): Promise<Observable<any>> {
-    const headers = await this.getHeaders();
-    return this.http.post(`${this.apiUrl}/object`, post, headers);
+  async createPost(postData: { id: number; title: string; content: string }): Promise<any> {
+    try {
+      const headers = await this.getHeaders();
+      const currentUser = await this.authService.getCurrentUser();
+      const userId = currentUser ? currentUser.cognitoIdentityId : null;
+      const postWithUserId = { 
+        ...postData, 
+        userId: userId 
+      };
+      console.log('Sending POST request with the following body:', postWithUserId);
+      const response = await this.http.post(this.apiUrl, postWithUserId, { headers })
+        .toPromise();
+      
+      console.log('Post created successfully', response);
+      return response;
+    } catch (error) {
+      console.error('Error creating post:', error);
+      return Promise.reject(new Error('Failed to create post'));
+    }
   }
 
-  // Update a blog post
-  async updatePost(id: number, post: { title: string; content: string }): Promise<Observable<any>> {
-    const headers = await this.getHeaders();
-    return this.http.put(`${this.apiUrl}/object/${id}`, post, headers);
+  async updatePost(post: { id: number; title: string; content: string }): Promise<any> {
+    try {
+      const headers = await this.getHeaders();
+      const response = await this.http.put(this.apiUrl, post, { headers }).toPromise();
+      return response;
+    } catch (error) {
+      console.error(`Error updating post with ID ${post.id}:`, error);
+      throw new Error(`Failed to update post with ID ${post.id}`);
+    }
   }
 
-  // Delete a blog post
-  async deletePost(id: number): Promise<Observable<any>> {
-    const headers = await this.getHeaders();
-    return this.http.delete(`${this.apiUrl}/object/${id}`, headers);
+  getPostById(id: number): Promise<any> {
+    console.log("this is the log from getPostById", this.http.get(`${this.apiUrl}/object/${id}`));
+    return this.http.get(`${this.apiUrl}/object/${id}`).toPromise();
   }
+  
+  async deletePost(id: number): Promise<any> {
+    try {
+      const headers = await this.getHeaders();
+      const response = await this.http.delete(`${this.apiUrl}/object/${id}`, { headers }).toPromise();
+      console.log(`Post deleted successfully with ID ${id}`, response);
+      return response;
+    } catch (error) {
+      console.error(`Error deleting post with ID ${id}:`, error);
+      throw new Error(`Failed to delete post with ID ${id}`);
+    }
+  }
+  
 }

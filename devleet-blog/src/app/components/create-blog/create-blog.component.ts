@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
+import { Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
+
 
 @Component({
   selector: 'app-create-blog',
@@ -7,26 +9,30 @@ import { BlogService } from '../../services/blog.service';
   styleUrls: ['./create-blog.component.css']
 })
 export class CreateBlogComponent {
-  title: string = '';
-  content: string = '';
-  message: string = '';
+  title = '';
+  content = '';
 
-  constructor(private blogService: BlogService) {}
+  @Output() postCreated = new EventEmitter<void>();
 
-  onSubmit(): void {
-    const post = { title: this.title, content: this.content };
+  constructor(private blogService: BlogService, private router: Router) {}
 
-    this.blogService.createPost(post).then(observable => {
-      observable.subscribe({
-        next: (data) => {
-          this.message = 'Post created successfully!';
-          this.title = '';
-          this.content = '';
-        },
-        error: (err) => {
-          this.message = 'Error creating post';
-        }
-      });
-    });
-  }
+  async onSubmit() {  
+    const postData = {
+      id: Math.floor(Math.random() * 1000000),
+      title: this.title,
+      content: this.content
+    };
+  
+    try {
+      await this.blogService.createPost(postData);
+      this.router.navigate(['/blogs']);
+      this.postCreated.emit();
+    } catch (error) {
+      console.error('Error creating post:', error);
+      alert('Failed to create post.');
+      this.router.navigate(['/blogs']);
+    }
+}
+
+  
 }

@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { AuthService } from '../../services/auth.service'; // AuthService to check login status
+import { AuthService } from '../../services/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-home',
@@ -9,8 +10,8 @@ import { AuthService } from '../../services/auth.service'; // AuthService to che
 export class HomeComponent implements OnInit {
   user: any;
 
-  constructor(private authService: AuthService) {}
-
+  constructor(private authService: AuthService, private router: Router) {}
+  
   ngOnInit(): void {
     this.checkUser();
   }
@@ -22,5 +23,12 @@ export class HomeComponent implements OnInit {
       console.log('No user logged in');
       this.user = null;
     }
+  }
+  logout() {
+    this.authService.signOut().then(() => {
+      this.router.navigate(['/login']);
+    }).catch((error) => {
+      console.error('Error logging out:', error);
+    });
   }
 }

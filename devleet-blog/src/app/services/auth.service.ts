@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@aws-amplify/auth';
 
+//This service is used for authentication of the users and it is provided by Amplify
 @Injectable({
   providedIn: 'root',
 })
@@ -44,13 +45,13 @@ export class AuthService {
   
   async signIn(email: string, password: string) {
     try {
-      return await Auth.signIn(email, password);
+      const user = await Auth.signIn(email, password);
+      return user;
     } catch (error) {
       throw error;
     }
   }
-
- 
+  
   async signOut() {
     try {
       await Auth.signOut();

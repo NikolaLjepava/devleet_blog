@@ -1,0 +1,32 @@
+/* Add to blog-list.component.css */
+
+.loading {
+    text-align: center;
+    font-size: 1.5em;
+    color: gray;
+  }
+  
+  .error {
+    text-align: center;
+    color: red;
+    font-size: 1.5em;
+  }
+  
+  ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  li {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  h2 {
+    margin: 0;
+  }
+  
+  p {
+    color: #555;
+  }
+  

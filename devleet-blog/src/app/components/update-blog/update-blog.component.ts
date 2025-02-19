@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
-import { ActivatedRoute } from '@angular/router';
+import { AuthService } from '../../services/auth.service'; // Add this to get the current user
 
 @Component({
   selector: 'app-update-blog',
@@ -8,43 +9,54 @@ import { ActivatedRoute } from '@angular/router';
   styleUrls: ['./update-blog.component.css']
 })
 export class UpdateBlogComponent implements OnInit {
-  id: number = 0;
+  id: number;
   title: string = '';
   content: string = '';
-  message: string = '';
+  post: any;
+  isOwner: boolean = false;
 
   constructor(
+    private route: ActivatedRoute,
+    private router: Router,
     private blogService: BlogService,
-    private route: ActivatedRoute
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
-    this.id = +this.route.snapshot.paramMap.get('id')!;  // Get post ID from URL
-    this.blogService.getPost(this.id).then(observable => {
-      observable.subscribe({
-        next: (data) => {
-          this.title = data.title;
-          this.content = data.content;
-        },
-        error: (err) => {
-          this.message = 'Error loading post';
-        }
-      });
+    this.id = +this.route.snapshot.paramMap.get('id');
+    this.blogService.getPost(this.id).subscribe({
+      next: (data) => {
+        this.post = data;
+        this.title = data.title;
+        this.content = data.content;
+
+        // Get current user ID and check if they are the post owner
+        this.authService.getCurrentUser().then(user => {
+          if (user && user.username === data.userId) {
+            this.isOwner = true;
+          } else {
+            this.isOwner = false;
+          }
+        });
+      },
+      error: (err) => console.error('Error fetching post:', err)
     });
   }
 
-  onSubmit(): void {
-    const post = { title: this.title, content: this.content };
+  async onSubmit() {
+    const updatedPost = {
+      id: this.id,
+      title: this.title,
+      content: this.content
+    };
 
-    this.blogService.updatePost(this.id, post).then(observable => {
-      observable.subscribe({
-        next: (data) => {
-          this.message = 'Post updated successfully!';
-        },
-        error: (err) => {
-          this.message = 'Error updating post';
-        }
-      });
-    });
+    try {
+      await this.blogService.updatePost(updatedPost);
+      alert('Post updated successfully!');
+      this.router.navigate(['/blogs']);
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('Failed to update post.');
+    }
   }
 }

@@ -16,6 +16,8 @@ import { AuthService } from './services/auth.service';
 import { BlogService } from './services/blog.service';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { LogoutButtonComponent } from './components/logout-button/logout-button.component';
+import { PostDetailComponent } from './components/post-detail/post-detail.component';
 
 @NgModule({
   declarations: [
@@ -28,6 +30,8 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
     CreateBlogComponent,
     UpdateBlogComponent,
     DeleteBlogComponent,
+    LogoutButtonComponent,
+    PostDetailComponent,
   ],
   imports: [
     BrowserModule,
