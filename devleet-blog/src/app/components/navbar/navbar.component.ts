@@ -18,6 +18,5 @@ export class NavbarComponent implements OnInit {
   logout() {
     this.authService.signOut();
     this.router.navigate(['/login']);
-    
   }
 }

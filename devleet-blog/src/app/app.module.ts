@@ -14,6 +14,7 @@ import { DeleteBlogComponent } from './components/delete-blog/delete-blog.compon
 import { AppRoutingModule } from './app-routing.module';
 import { AuthService } from './services/auth.service';
 import { BlogService } from './services/blog.service';
+import { ApiService } from './services/api.service';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { LogoutButtonComponent } from './components/logout-button/logout-button.component';
@@ -42,7 +43,7 @@ import { PostDetailComponent } from './components/post-detail/post-detail.compon
     MatSnackBarModule,
     BrowserAnimationsModule
   ],
-  providers: [AuthService, BlogService],
+  providers: [AuthService, BlogService, ApiService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
-import { AuthService } from '../../services/auth.service';  // Inject AuthService
+import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-post-detail',
@@ -16,27 +16,38 @@ export class PostDetailComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private blogService: BlogService,
-    private authService: AuthService,  // Inject AuthService to access current user
+    private apiService: ApiService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
     this.id = +this.route.snapshot.paramMap.get('id')!;
     this.fetchPost();
-    console.log("This is the this.id from the route snapshot", this.id);
   }
 
-  async fetchPost() {
-    try {
-      this.post = await this.blogService.getPostById(this.id);
-      const currentUser = await this.authService.getCurrentUser();
-      console.log("This is the post.owner", this.post.owner);
-      console.log("This is the currentUser.username", currentUser.username);
-      // Instead of userId, try fetching the owner field
-      this.isOwner = this.post.owner === currentUser.username; 
-    } catch (error) {
-      console.error('Error fetching post:', error);
-    }
+  fetchPost() {
+    this.blogService.getPost(this.id).subscribe({
+      next: (data) => {
+        this.post = data;
+        this.checkOwnership();
+      },
+      error: (error) => {
+        console.error('Error fetching post:', error);
+      }
+    });
+  }
+  
+  checkOwnership() {
+    this.apiService.checkIfAuthor(this.id).subscribe({
+      next: (response) => {
+        console.log('API response:', response);
+        this.isOwner = response.isOwner;
+        console.log('Is owner:', this.isOwner);
+      },
+      error: (error) => {
+        console.error('Error checking ownership:', error);
+      }
+    });
   }
   
 

@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { BlogService } from '../../services/blog.service';
 import { ActivatedRoute, Router } from '@angular/router';
+import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 @Component({
   selector: 'app-delete-blog',
@@ -21,16 +23,22 @@ export class DeleteBlogComponent implements OnInit {
     this.id = +this.route.snapshot.paramMap.get('id')!;  // Get post ID from URL
   }
 
-  async onDelete(): Promise<void> {
-    try {
-      await this.blogService.deletePost(this.id);
-      this.message = 'Post deleted successfully!';
-      setTimeout(() => {
-        this.router.navigate(['/blogs']);
-      }, 2000);
-    } catch (error) {
-      this.message = 'Error deleting post';
-      console.error('Error deleting post:', error);
-    }
+  onDelete(): void {
+    this.blogService.deletePost(this.id).pipe(
+      catchError((error) => {
+        this.message = 'Error deleting post';
+        console.error('Error deleting post:', error);
+        return of(null);
+      })
+    ).subscribe((response) => {
+      if (response) {
+        this.message = 'Post deleted successfully!';
+        setTimeout(() => {
+          this.router.navigate(['/blogs']);
+        }, 2000);
+      } else {
+        this.message = 'Failed to delete post.';
+      }
+    });
   }
 }

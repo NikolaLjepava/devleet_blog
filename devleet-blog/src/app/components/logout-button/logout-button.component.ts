@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { of } from 'rxjs';
+import { tap, catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-logout-button',
@@ -12,20 +14,17 @@ export class LogoutButtonComponent implements OnInit {
   constructor(private authService: AuthService, private router: Router) {}
 
   ngOnInit() {
-    // Check if the user is authenticated
-    this.authService.isAuthenticated().then((isAuthenticated) => {
-      this.isLoggedIn = isAuthenticated;
-    });
   }
-
+  
   logout() {
-    this.authService.signOut().then(() => {
-      this.router.navigate(['/login']); // Redirect to login page after logout
-    }).catch((error) => {
-      console.error('Error logging out:', error);
-    });
+    this.authService.signOut().pipe(
+      tap(() => {
+        this.router.navigate(['/login']);
+      }),
+      catchError((error) => {
+        console.error('Error logging out:', error);
+        return of(null);
+      })
+    ).subscribe();
   }
 }
-
-
-

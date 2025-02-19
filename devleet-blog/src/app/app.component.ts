@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from './services/auth.service';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -11,22 +12,27 @@ export class AppComponent implements OnInit {
 
   constructor(private router: Router, private authService: AuthService) {}
 
-  ngOnInit() {
-    // Track user authentication state
-    this.authService.getCurrentUser().then((user) => {
+  ngOnInit(): void {
+    this.authService.getCurrentUser().pipe(
+      catchError((err) => {
+        console.error('User not authenticated', err);
+        this.user = null;
+        return [];
+      })
+    ).subscribe((user) => {
       this.user = user;
-    }).catch((err) => {
-      console.error('User not authenticated', err);
-      this.user = null; // Ensure user is set to null if not authenticated
     });
   }
 
   logout() {
-    this.authService.signOut().then(() => {
+    this.authService.signOut().pipe(
+      catchError((err) => {
+        console.error('Logout failed', err);
+        return [];
+      })
+    ).subscribe(() => {
       this.user = null;
       this.router.navigate(['/login']);
-    }).catch((err) => {
-      console.error('Logout failed', err);
     });
   }
 }

@@ -22,7 +22,7 @@
         },
         "checkIfAuthor": {
           "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
-          "s3Key": "amplify-builds/checkIfAuthor-58412b66655a72707642-build.zip"
+          "s3Key": "amplify-builds/checkIfAuthor-37474b42562f366d6d4e-build.zip"
         }
       },
       "storage": {
