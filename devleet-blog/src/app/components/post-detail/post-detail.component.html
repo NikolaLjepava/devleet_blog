@@ -1,18 +1,10 @@
 <div *ngIf="post">
-    <h2>{{ post.title }}</h2>
-    <p>{{ post.content }}</p>
-    <small>Posted by: {{ post.userId }}</small>
-  
-    <div *ngIf="isOwner">
-      <!-- Show the Update and Delete buttons only if the current user is the post owner -->
-      <button (click)="onUpdate()" class="btn btn-primary">Update Post</button>
-      <button (click)="onDelete()" class="btn btn-danger ml-2">Delete Post</button>
-    </div>
-    
-  
-    <!-- Show a message if there's an error or loading -->
-    <div *ngIf="!isOwner" class="alert alert-warning">
-      You are not authorized to update or delete this post.
-    </div>
+  <h1>{{ post.title }}</h1>
+  <p>{{ post.content }}</p>
+  <img *ngIf="post.imageUrl" [src]="post.imageUrl" alt="Post Image">
+  <!-- Show update and delete buttons only if the user is the owner -->
+  <div *ngIf="isOwner">
+    <button (click)="updatePost()">Update</button>
+    <button (click)="deletePost()">Delete</button>
   </div>
-  
+</div>

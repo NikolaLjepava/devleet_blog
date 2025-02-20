@@ -9,7 +9,8 @@
       "UnauthRoleName": "amplify-devleetblog-dev-159f3-unauthRole",
       "StackName": "amplify-devleetblog-dev-159f3",
       "StackId": "arn:aws:cloudformation:eu-north-1:207567785464:stack/amplify-devleetblog-dev-159f3/a79cc2d0-e4ca-11ef-89e2-0a11456a1929",
-      "AmplifyAppId": "d1a0i42ttduijd"
+      "AmplifyAppId": "d1a0i42ttduijd",
+      "APIGatewayAuthURL": "https://s3.amazonaws.com/amplify-devleetblog-dev-159f3-deployment/amplify-cfn-templates/api/APIGatewayAuthStack.json"
     },
     "categories": {
       "auth": {
@@ -23,6 +24,10 @@
         "checkIfAuthor": {
           "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
           "s3Key": "amplify-builds/checkIfAuthor-37474b42562f366d6d4e-build.zip"
+        },
+        "imageUpload": {
+          "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
+          "s3Key": "amplify-builds/imageUpload-4b47566d4f737265325a-build.zip"
         }
       },
       "storage": {

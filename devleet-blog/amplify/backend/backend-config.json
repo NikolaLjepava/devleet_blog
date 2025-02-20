@@ -9,6 +9,22 @@
           ],
           "category": "function",
           "resourceName": "devleetblog"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "imageUpload"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "checkIfAuthor"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -68,6 +84,11 @@
       ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "imageUpload": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
     }
   },
   "parameters": {
@@ -100,6 +121,22 @@
         {
           "category": "function",
           "resourceName": "devleetblog"
+        }
+      ]
+    },
+    "AMPLIFY_function_imageUpload_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "imageUpload"
+        }
+      ]
+    },
+    "AMPLIFY_function_imageUpload_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "imageUpload"
         }
       ]
     }

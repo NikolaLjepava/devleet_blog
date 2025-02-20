@@ -1,7 +1,9 @@
 import { Component, OnInit } from '@angular/core';
+import { catchError } from 'rxjs/operators';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
 import { ApiService } from '../../services/api.service';
+import { of } from 'rxjs';
 
 @Component({
   selector: 'app-post-detail',
@@ -49,7 +51,6 @@ export class PostDetailComponent implements OnInit {
       }
     });
   }
-  
 
   onUpdate() {
     if (this.isOwner) {
@@ -59,14 +60,20 @@ export class PostDetailComponent implements OnInit {
     }
   }
 
-  async onDelete() {
+  onDelete() {
     if (this.isOwner) {
-      try {
-        await this.blogService.deletePost(this.id);
-        this.router.navigate(['/blogs']);
-      } catch (error) {
-        console.error('Error deleting post:', error);
-      }
+      this.blogService.deletePost(this.id).pipe(
+        catchError((error) => {
+          console.error('Error deleting post:', error);
+          return of(null);
+        })
+      ).subscribe((response) => {
+        if (response) {
+          this.router.navigate(['/blogs']);
+        } else {
+          console.error('Failed to delete post');
+        }
+      });
     } else {
       console.error('You are not the owner of this post.');
     }

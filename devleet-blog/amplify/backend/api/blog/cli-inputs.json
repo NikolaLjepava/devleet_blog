@@ -7,6 +7,32 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/upload-image": {
+      "name": "/upload-image",
+      "lambdaFunction": "imageUpload",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update",
+          "delete"
+        ]
+      }
+    },
+    "/check-author": {
+      "name": "/check-author",
+      "lambdaFunction": "checkIfAuthor",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update",
+          "delete"
+        ]
+      }
     }
   }
 }

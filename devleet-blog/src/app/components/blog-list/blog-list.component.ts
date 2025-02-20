@@ -1,38 +1,3 @@
-// import { Component, OnInit } from '@angular/core';
-// import { BlogService } from '../../services/blog.service';
-
-// @Component({
-//   selector: 'app-blog-list',
-//   templateUrl: './blog-list.component.html',
-//   styleUrls: ['./blog-list.component.css']
-// })
-// export class BlogListComponent implements OnInit {
-//   posts: any[] = [];
-//   loading: boolean = true;
-//   error: string = '';
-
-//   constructor(private blogService: BlogService) {}
-
-//   ngOnInit(): void {
-//     this.fetchPosts();
-//   }
-
-//   fetchPosts() {
-//     this.blogService.getPosts().subscribe({
-//       next: (data) => {
-//         console.log('Fetched posts:', data);
-//         this.posts = data;
-//         this.loading = false;
-//       },
-//       error: (err) => {
-//         console.error('Error fetching posts:', err);
-//         this.error = 'Error loading posts';
-//         this.loading = false;
-//       }
-//     });
-//   }
-// }
-
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { BlogService } from '../../services/blog.service';
 import { Subscription } from 'rxjs';
@@ -71,7 +36,6 @@ export class BlogListComponent implements OnInit, OnDestroy {
       }
     });
   }
-  
 
   // Cleanup to prevent memory leaks when the component is destroyed
   ngOnDestroy() {
@@ -80,4 +44,3 @@ export class BlogListComponent implements OnInit, OnDestroy {
     }
   }
 }
-

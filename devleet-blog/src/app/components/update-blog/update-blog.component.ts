@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
-import { AuthService } from '../../services/auth.service';
 import { of } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
+import { tap } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-update-blog',
@@ -14,16 +14,36 @@ export class UpdateBlogComponent implements OnInit {
   id: number;
   title: string = '';
   content: string = '';
-  post: any;
-  isOwner: boolean = false;
+  selectedFile: File = null;
 
   constructor(
-    private router: Router,
+    private route: ActivatedRoute,
     private blogService: BlogService,
-    private authService: AuthService
+    private router: Router
   ) {}
 
   ngOnInit(): void {
+    this.id = +this.route.snapshot.paramMap.get('id')!;
+    this.fetchPost();
+  }
+
+  fetchPost() {
+    this.blogService.getPost(this.id).subscribe({
+      next: (data) => {
+        this.title = data.title;
+        this.content = data.content;
+      },
+      error: (error) => {
+        console.error('Error fetching post:', error);
+      }
+    });
+  }
+
+  onFileSelected(event: Event) {
+    const fileInput = event.target as HTMLInputElement;
+    if (fileInput.files && fileInput.files.length > 0) {
+      this.selectedFile = fileInput.files[0];
+    }
   }
 
   onSubmit() {
@@ -32,18 +52,37 @@ export class UpdateBlogComponent implements OnInit {
       title: this.title,
       content: this.content,
     };
-  
-    this.blogService.updatePost(updatedPost).pipe(
-      tap(() => {
-        alert('Post updated successfully!');
-        this.router.navigate(['/blogs']);
-      }),
-      catchError((error) => {
-        console.error('Error updating post:', error);
-        alert('Failed to update post.');
-        return of(null);
-      })
-    ).subscribe();
+
+    if (this.selectedFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const imageData = reader.result.toString().split(',')[1];
+        const fileExtension = this.selectedFile.name.split('.').pop();
+        this.blogService.updatePost(updatedPost, imageData, fileExtension).pipe(
+          tap(() => {
+            alert('Post updated successfully!');
+            this.router.navigate(['/blogs']);
+          }),
+          catchError((error) => {
+            console.error('Error updating post:', error);
+            alert('Failed to update post.');
+            return of(null);
+          })
+        ).subscribe();
+      };
+      reader.readAsDataURL(this.selectedFile);
+    } else {
+      this.blogService.updatePost(updatedPost).pipe(
+        tap(() => {
+          alert('Post updated successfully!');
+          this.router.navigate(['/blogs']);
+        }),
+        catchError((error) => {
+          console.error('Error updating post:', error);
+          alert('Failed to update post.');
+          return of(null);
+        })
+      ).subscribe();
+    }
   }
-  
 }

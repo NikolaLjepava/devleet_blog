@@ -39,7 +39,7 @@ export class BlogService {
     );
   }
 
-  createPost(postData: { id: number; title: string; content: string }): Observable<any> {
+  createPost(postData: { id: number; title: string; content: string }, imageData?: string, fileExtension?: string): Observable<any> {
     return this.authService.getHeaders().pipe(
       switchMap((headers) => {
         return this.authService.getCurrentUser().pipe(
@@ -49,20 +49,37 @@ export class BlogService {
               ...postData, 
               userId: userId 
             };
-            return this.http.post(this.apiUrl, postWithUserId, { headers }).pipe(
-              tap(response => console.log('Post created successfully', response)),
-              catchError((error) => {
-                console.error('Error creating post:', error);
-                return throwError(() => new Error('Failed to create post'));
-              })
-            );
+
+            if (imageData && fileExtension) {
+              return this.apiService.uploadImage(imageData, fileExtension).pipe(
+                switchMap((response) => {
+                  const imageUrl = response.imageUrl;
+                  const postWithImage = { ...postWithUserId, imageUrl };
+                  return this.http.post(this.apiUrl, postWithImage, { headers }).pipe(
+                    tap(response => console.log('Post created successfully with image', response)),
+                    catchError((error) => {
+                      console.error('Error creating post with image:', error);
+                      return throwError(() => new Error('Failed to create post with image'));
+                    })
+                  );
+                })
+              );
+            } else {
+              return this.http.post(this.apiUrl, postWithUserId, { headers }).pipe(
+                tap(response => console.log('Post created successfully', response)),
+                catchError((error) => {
+                  console.error('Error creating post:', error);
+                  return throwError(() => new Error('Failed to create post'));
+                })
+              );
+            }
           })
         );
       })
     );
   }
 
-  updatePost(post: { id: number; title: string; content: string }): Observable<any> {
+  updatePost(post: { id: number; title: string; content: string }, imageData?: string, fileExtension?: string): Observable<any> {
     return this.authService.getHeaders().pipe(
       switchMap((headers) => {
         return this.authService.getCurrentUser().pipe(
@@ -72,13 +89,30 @@ export class BlogService {
               ...post, 
               userId: userId 
             };
-            return this.http.put(`${this.apiUrl}/${post.id}`, postWithUserId, { headers }).pipe(
-              tap((response) => console.log('Post updated successfully', response)),
-              catchError((error) => {
-                console.error(`Error updating post with ID ${post.id}:`, error);
-                return throwError(() => new Error('Failed to update post'));
-              })
-            );
+  
+            if (imageData && fileExtension) {
+              return this.apiService.uploadImage(imageData, fileExtension).pipe(
+                switchMap((response: { imageUrl: string }) => {
+                  const imageUrl = response.imageUrl;
+                  const postWithImage = { ...postWithUserId, imageUrl };
+                  return this.http.put(`${this.apiUrl}/${post.id}`, postWithImage, { headers }).pipe(
+                    tap((response) => console.log('Post updated successfully with image', response)),
+                    catchError((error) => {
+                      console.error(`Error updating post with ID ${post.id}:`, error);
+                      return throwError(() => new Error('Failed to update post with image'));
+                    })
+                  );
+                })
+              );
+            } else {
+              return this.http.put(`${this.apiUrl}/${post.id}`, postWithUserId, { headers }).pipe(
+                tap((response) => console.log('Post updated successfully', response)),
+                catchError((error) => {
+                  console.error(`Error updating post with ID ${post.id}:`, error);
+                  return throwError(() => new Error('Failed to update post'));
+                })
+              );
+            }
           })
         );
       })
