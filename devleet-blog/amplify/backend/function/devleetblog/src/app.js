@@ -180,25 +180,40 @@ app.put(path, async function(req, res) {
 /************************************
 * HTTP post method for insert object *
 *************************************/
-
 app.post(path, async function(req, res) {
+  const { id, title, content, userEmail, ...rest } = req.body;
 
-  if (userIdPresent) {
-    req.body['userId'] = req.apiGateway.event.requestContext.identity.cognitoIdentityId || UNAUTH;
+  // Ensure userEmail is present
+  if (!userEmail) {
+    res.statusCode = 400;
+    return res.json({ error: 'userEmail is required' });
   }
+
+  // Extract username from email
+  const username = userEmail.split('@')[0];
 
   let putItemParams = {
     TableName: tableName,
-    Item: req.body
-  }
+    Item: {
+      id,
+      title,
+      content,
+      userEmail,
+      username,
+      createdAt: new Date().toISOString(),
+      ...rest // Include any other fields from the request body
+    }
+  };
+
   try {
     let data = await ddbDocClient.send(new PutCommand(putItemParams));
-    res.json({ success: 'post call succeed!', url: req.url, data: data })
+    res.json({ success: 'post call succeed!', url: req.url, data: data });
   } catch (err) {
     res.statusCode = 500;
     res.json({ error: err, url: req.url, body: req.body });
   }
 });
+
 
 /**************************************
 * HTTP remove method to delete object *

@@ -14,6 +14,7 @@ export class BlogService {
 
   constructor(private http: HttpClient, private authService: AuthService, private apiService: ApiService) {}
 
+  
   // Get all blog posts
   getPosts(): Observable<any> {
     return from(this.authService.getHeaders()).pipe(
@@ -28,45 +29,33 @@ export class BlogService {
     );
   }
 
-  // Get a single blog post by ID
-  getPost(id: number): Observable<any> {
-    return from(this.authService.getHeaders()).pipe(
-      switchMap((headers) => this.http.get(`${this.apiUrl}/${id}`, { headers })),
-      catchError((error) => {
-        console.error(`Error fetching post with ID ${id}:`, error);
-        return throwError(() => new Error(`Failed to fetch post with ID ${id}`));
-      })
-    );
-  }
-
   createPost(postData: { id: number; title: string; content: string }, imageData?: string, fileExtension?: string): Observable<any> {
     return this.authService.getHeaders().pipe(
       switchMap((headers) => {
-        return this.authService.getCurrentUser().pipe(
-          switchMap((currentUser) => {
-            const userId = currentUser ? currentUser.cognitoIdentityId : null;
-            const postWithUserId = { 
+        return this.authService.getUserEmail().pipe(
+          switchMap((userEmail) => {
+            const postWithUserEmail = { 
               ...postData, 
-              userId: userId 
+              userEmail: userEmail,
+              imageUrl: ''
             };
-
+            console.log("The user's email is: ", userEmail);
             if (imageData && fileExtension) {
+              console.log('Uploading image with data:', imageData, 'and file extension:', fileExtension);
               return this.apiService.uploadImage(imageData, fileExtension).pipe(
-                switchMap((response) => {
-                  const imageUrl = response.imageUrl;
-                  const postWithImage = { ...postWithUserId, imageUrl };
-                  return this.http.post(this.apiUrl, postWithImage, { headers }).pipe(
-                    tap(response => console.log('Post created successfully with image', response)),
+                switchMap((uploadResponse) => {
+                  console.log('Image uploaded successfully:', uploadResponse);
+                  postWithUserEmail.imageUrl = uploadResponse.imageUrl;
+                  return this.http.post(`${this.apiUrl}`, postWithUserEmail, { headers }).pipe(
                     catchError((error) => {
-                      console.error('Error creating post with image:', error);
-                      return throwError(() => new Error('Failed to create post with image'));
+                      console.error('Error creating post:', error);
+                      return throwError(() => new Error('Failed to create post'));
                     })
                   );
                 })
               );
             } else {
-              return this.http.post(this.apiUrl, postWithUserId, { headers }).pipe(
-                tap(response => console.log('Post created successfully', response)),
+              return this.http.post(`${this.apiUrl}`, postWithUserEmail, { headers }).pipe(
                 catchError((error) => {
                   console.error('Error creating post:', error);
                   return throwError(() => new Error('Failed to create post'));
@@ -79,45 +68,56 @@ export class BlogService {
     );
   }
 
-  updatePost(post: { id: number; title: string; content: string }, imageData?: string, fileExtension?: string): Observable<any> {
-    return this.authService.getHeaders().pipe(
-      switchMap((headers) => {
-        return this.authService.getCurrentUser().pipe(
-          switchMap((currentUser) => {
-            const userId = currentUser ? currentUser.cognitoIdentityId : null;
-            const postWithUserId = { 
-              ...post, 
-              userId: userId 
-            };
-  
-            if (imageData && fileExtension) {
-              return this.apiService.uploadImage(imageData, fileExtension).pipe(
-                switchMap((response: { imageUrl: string }) => {
-                  const imageUrl = response.imageUrl;
-                  const postWithImage = { ...postWithUserId, imageUrl };
-                  return this.http.put(`${this.apiUrl}/${post.id}`, postWithImage, { headers }).pipe(
-                    tap((response) => console.log('Post updated successfully with image', response)),
-                    catchError((error) => {
-                      console.error(`Error updating post with ID ${post.id}:`, error);
-                      return throwError(() => new Error('Failed to update post with image'));
-                    })
-                  );
-                })
-              );
-            } else {
-              return this.http.put(`${this.apiUrl}/${post.id}`, postWithUserId, { headers }).pipe(
-                tap((response) => console.log('Post updated successfully', response)),
-                catchError((error) => {
-                  console.error(`Error updating post with ID ${post.id}:`, error);
-                  return throwError(() => new Error('Failed to update post'));
-                })
-              );
-            }
-          })
-        );
-      })
-    );
-  }
+ // Get a single blog post by ID
+ getPost(id: number): Observable<any> {
+  return from(this.authService.getHeaders()).pipe(
+    switchMap((headers) => this.http.get(`${this.apiUrl}/object/${id}`, { headers })),
+    tap(response => console.log('Fetched post:', response)),
+    catchError((error) => {
+      console.error(`Error fetching post with ID ${id}:`, error);
+      return throwError(() => new Error(`Failed to fetch post with ID ${id}`));
+    })
+  );
+}
+
+updatePost(post: { id: number; title: string; content: string }, imageData?: string, fileExtension?: string): Observable<any> {
+  return this.authService.getHeaders().pipe(
+    switchMap((headers) => {
+      return this.authService.getCurrentUser().pipe(
+        switchMap((currentUser) => {
+          const userEmail = currentUser ? currentUser.attributes.email : null;
+          const postWithUserEmail = { 
+            ...post, 
+            userEmail: userEmail 
+          };
+          if (imageData && fileExtension) {
+            return this.apiService.uploadImage(imageData, fileExtension).pipe(
+              switchMap((response) => {
+                const imageUrl = response.imageUrl;
+                const postWithImage = { ...postWithUserEmail, imageUrl };
+                return this.http.put(this.apiUrl, postWithImage, { headers }).pipe(
+                  tap(response => console.log('Post updated successfully with image', response)),
+                  catchError((error) => {
+                    console.error('Error updating post with image:', error);
+                    return throwError(() => new Error('Failed to update post with image'));
+                  })
+                );
+              })
+            );
+          } else {
+            return this.http.put(this.apiUrl, postWithUserEmail, { headers }).pipe(
+              tap(response => console.log('Post updated successfully', response)),
+              catchError((error) => {
+                console.error('Error updating post:', error);
+                return throwError(() => new Error('Failed to update post'));
+              })
+            );
+          }
+        })
+      );
+    })
+  );
+}
   
   deletePost(id: number): Observable<any> {
     return this.authService.getHeaders().pipe( // Get headers as Observable

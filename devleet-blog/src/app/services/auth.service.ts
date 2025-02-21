@@ -10,16 +10,16 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 })
 export class AuthService {
 
-  // Checks if a user is logged in and returns its details
   getCurrentUser(): Observable<any> {
-    return from(Auth.currentAuthenticatedUser()).pipe(
-      catchError((error) => {
-        console.error('Error fetching current user:', error);
-        return of(null);
-      })
-    );
+    return from(Auth.currentAuthenticatedUser());
   }
 
+  getUserEmail(): Observable<string> {
+    return from(Auth.currentAuthenticatedUser()).pipe(
+      map(user => user.attributes.email)
+    );
+  }
+  
   getHeaders(): Observable<HttpHeaders> {
     return from(this.getAccessToken()).pipe(
       map((token) => {

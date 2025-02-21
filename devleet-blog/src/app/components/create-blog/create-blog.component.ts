@@ -1,8 +1,8 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
-import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 @Component({
   selector: 'app-create-blog',
@@ -10,17 +10,15 @@ import { catchError } from 'rxjs/operators';
   styleUrls: ['./create-blog.component.css']
 })
 export class CreateBlogComponent {
-  title = '';
-  content = '';
-  selectedFile: File = null;
-
-  @Output() postCreated = new EventEmitter<void>();
+  title: string;
+  content: string;
+  selectedFile: File;
 
   constructor(private blogService: BlogService, private router: Router) {}
 
-  onFileSelected(event: Event) {
-    const fileInput = event.target as HTMLInputElement;
-    if (fileInput.files && fileInput.files.length > 0) {
+  onFileSelected(event: any): void {
+    const fileInput = event.target;
+    if (fileInput.files && fileInput.files[0]) {
       this.selectedFile = fileInput.files[0];
     }
   }
@@ -41,15 +39,11 @@ export class CreateBlogComponent {
           catchError((error) => {
             console.error('Error creating post:', error);
             alert('Failed to create post.');
-            this.router.navigate(['/blogs']);
             return of(null);
           })
         ).subscribe((response) => {
           if (response) {
             this.router.navigate(['/blogs']);
-            this.postCreated.emit();
-          } else {
-            console.error('Failed to create post');
           }
         });
       };
@@ -59,15 +53,11 @@ export class CreateBlogComponent {
         catchError((error) => {
           console.error('Error creating post:', error);
           alert('Failed to create post.');
-          this.router.navigate(['/blogs']);
           return of(null);
         })
       ).subscribe((response) => {
         if (response) {
           this.router.navigate(['/blogs']);
-          this.postCreated.emit();
-        } else {
-          console.error('Failed to create post');
         }
       });
     }

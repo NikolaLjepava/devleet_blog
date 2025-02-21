@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { catchError } from 'rxjs/operators';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BlogService } from '../../services/blog.service';
-import { ApiService } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
+import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 
 @Component({
@@ -11,14 +11,15 @@ import { of } from 'rxjs';
   styleUrls: ['./post-detail.component.css']
 })
 export class PostDetailComponent implements OnInit {
-  post: any = null;
-  id: number = 0;
-  isOwner: boolean = false;  // Flag to check if the logged-in user is the original poster
+  post: any;
+  isOwner: boolean = false;
+  id: number;
+  imageUrl: string; // Add this property
 
   constructor(
     private route: ActivatedRoute,
     private blogService: BlogService,
-    private apiService: ApiService,
+    private authService: AuthService,
     private router: Router
   ) {}
 
@@ -31,6 +32,8 @@ export class PostDetailComponent implements OnInit {
     this.blogService.getPost(this.id).subscribe({
       next: (data) => {
         this.post = data;
+        console.log('Fetched post:', this.post);
+        this.imageUrl = this.post.imageUrl; // Set the image URL
         this.checkOwnership();
       },
       error: (error) => {
@@ -38,12 +41,19 @@ export class PostDetailComponent implements OnInit {
       }
     });
   }
-  
+
   checkOwnership() {
-    this.apiService.checkIfAuthor(this.id).subscribe({
-      next: (response) => {
-        console.log('API response:', response);
-        this.isOwner = response.isOwner;
+    this.authService.getCurrentUser().subscribe({
+      next: (currentUser) => {
+        const userEmail = currentUser ? currentUser.attributes.email : null;
+        const username = userEmail ? userEmail.split('@')[0] : null;
+        console.log('Current user email:', userEmail);
+        console.log('Current user username:', username);
+        console.log('Post user email:', this.post.userEmail);
+        if (this.post.userEmail) {
+          console.log('Post user username:', this.post.userEmail.split('@')[0]);
+        }
+        this.isOwner = this.post.userEmail && this.post.userEmail.split('@')[0] === username;
         console.log('Is owner:', this.isOwner);
       },
       error: (error) => {
