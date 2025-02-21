@@ -1,5 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { AuthService } from '../../services/auth.service'; // AuthService to check login status
+import { AuthService } from '../../services/auth.service';
+import { Router } from '@angular/router';
+import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 @Component({
   selector: 'app-home',
@@ -9,18 +12,32 @@ import { AuthService } from '../../services/auth.service'; // AuthService to che
 export class HomeComponent implements OnInit {
   user: any;
 
-  constructor(private authService: AuthService) {}
-
+  constructor(private authService: AuthService, private router: Router) {}
+  
   ngOnInit(): void {
     this.checkUser();
   }
 
-  async checkUser() {
-    try {
-      this.user = await this.authService.getCurrentUser();
-    } catch (error) {
-      console.log('No user logged in');
-      this.user = null;
-    }
+  checkUser() {
+    this.authService.getCurrentUser().pipe(
+      catchError((error) => {
+        console.log('No user logged in');
+        this.user = null;
+        return of(null);
+      })
+    ).subscribe((user) => {
+      this.user = user;
+    });
+  }
+
+  logout() {
+    this.authService.signOut().pipe(
+      catchError((error) => {
+        console.error('Error logging out:', error);
+        return of(null);
+      })
+    ).subscribe(() => {
+      this.router.navigate(['/login']); // Redirect to login after successful logout
+    });
   }
 }

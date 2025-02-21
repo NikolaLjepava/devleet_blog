@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "paths": {
+    "/blog-v1": {
+      "name": "/blog-v1",
+      "lambdaFunction": "devleetblog",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/upload-image": {
+      "name": "/upload-image",
+      "lambdaFunction": "imageUpload",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}

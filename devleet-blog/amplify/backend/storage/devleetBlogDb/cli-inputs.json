@@ -1,0 +1,10 @@
+{
+  "resourceName": "devleetBlogDb",
+  "tableName": "posts",
+  "partitionKey": {
+    "fieldName": "id",
+    "fieldType": "number"
+  },
+  "gsi": [],
+  "triggerFunctions": []
+}

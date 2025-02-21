@@ -1,57 +1,103 @@
-// src/app/services/auth.service.ts
+import { HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth } from '@aws-amplify/auth';
+import { Observable, from, of, throwError } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
+//This service is used for authentication of the users and it is provided by Amplify
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
 
-  async getCurrentUser() {
-    try {
-      return await Auth.currentAuthenticatedUser();
-    } catch (error) {
-      return null; // No user logged in so return nothing
-    }
+  getCurrentUser(): Observable<any> {
+    return from(Auth.currentAuthenticatedUser());
   }
 
-  async signUp(email: string, password: string) {
-    try {
-      await Auth.signUp({
+  getUserEmail(): Observable<string> {
+    return from(Auth.currentAuthenticatedUser()).pipe(
+      map(user => user.attributes.email)
+    );
+  }
+  
+  getHeaders(): Observable<HttpHeaders> {
+    return from(this.getAccessToken()).pipe(
+      map((token) => {
+        return new HttpHeaders({
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        });
+      }),
+      catchError((error) => {
+        console.error('Error creating headers:', error);
+        return throwError(() => new Error('Failed to create headers'));
+      })
+    );
+  }
+
+  signUp(email: string, password: string): Observable<any> {
+    return from(
+      Auth.signUp({
         username: email,
         password,
         attributes: { email },
-      });
-    } catch (error) {
-      // Check for specific error when user already exists
-      if (error.code === 'UsernameExistsException') {
-        throw new Error('This email is already registered. Please use a different email.');
-      }
-      throw error;
-    }
+      })
+    ).pipe(
+      map(response => response),
+      catchError((error) => {
+        if (error.code === 'UsernameExistsException') {
+          return throwError(() => new Error('This email is already registered. Please use a different email.'));
+        }
+        return throwError(() => error);
+      })
+    );
   }
 
-  async confirmSignUp(email: string, code: string) {
-    try {
-      await Auth.confirmSignUp(email, code);
-    } catch (error) {
-      throw error;
-    }
+  confirmSignUp(email: string, code: string): Observable<any> {
+    return from(Auth.confirmSignUp(email, code)).pipe(
+      catchError((error) => {
+        return throwError(() => error);
+      })
+    );
   }
 
-  async signIn(email: string, password: string) {
-    try {
-      return await Auth.signIn(email, password);
-    } catch (error) {
-      throw error;
-    }
+  signIn(email: string, password: string): Observable<any> {
+    return from(Auth.signIn(email, password)).pipe(
+      catchError((error) => {
+        return throwError(() => error);
+      })
+    );
   }
 
-  async signOut() {
-    try {
-      await Auth.signOut();
-    } catch (error) {
-      throw error;
-    }
+  signOut(): Observable<any> {
+    return from(Auth.signOut()).pipe(
+      catchError((error) => {
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // check if user is logged in with simple true or false
+  isAuthenticated(): Observable<boolean> {
+    return from(Auth.currentAuthenticatedUser()).pipe(
+      map(() => true),
+      catchError(() => {
+        return of(false);
+      })
+    );
+  }
+
+  // this ensures the token is always fresh
+  getAccessToken(): Observable<string> {
+    return from(Auth.currentSession()).pipe(
+      switchMap((session) => {
+        // If session is retrieved, extract the JWT token
+        return of(session.getIdToken().getJwtToken());
+      }),
+      catchError((error) => {
+        console.error('Error fetching access token:', error);
+        return throwError(() => error); // Propagate the error
+      })
+    );
   }
 }

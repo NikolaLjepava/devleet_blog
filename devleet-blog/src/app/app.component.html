@@ -1,8 +1,2 @@
-<div *ngIf="!user">
-  <!-- Show sign-up form if the user is in sign-up mode -->
-  <app-signup *ngIf="!isLoginMode"></app-signup>
-
-  <!-- Show login form if the user is in login mode -->
-  <app-login *ngIf="isLoginMode"></app-login>
-</div>
+<app-navbar></app-navbar>
 <router-outlet></router-outlet>
