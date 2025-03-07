@@ -14,7 +14,7 @@ export class PostDetailComponent implements OnInit {
   post: any;
   isOwner: boolean = false;
   id: number;
-  imageUrl: string; // Add this property
+  isLoading: boolean = true;
 
   constructor(
     private route: ActivatedRoute,
@@ -33,11 +33,12 @@ export class PostDetailComponent implements OnInit {
       next: (data) => {
         this.post = data;
         console.log('Fetched post:', this.post);
-        this.imageUrl = this.post.imageUrl; // Set the image URL
         this.checkOwnership();
+        this.isLoading = false;
       },
       error: (error) => {
         console.error('Error fetching post:', error);
+        this.isLoading = false;
       }
     });
   }
@@ -46,15 +47,7 @@ export class PostDetailComponent implements OnInit {
     this.authService.getCurrentUser().subscribe({
       next: (currentUser) => {
         const userEmail = currentUser ? currentUser.attributes.email : null;
-        const username = userEmail ? userEmail.split('@')[0] : null;
-        console.log('Current user email:', userEmail);
-        console.log('Current user username:', username);
-        console.log('Post user email:', this.post.userEmail);
-        if (this.post.userEmail) {
-          console.log('Post user username:', this.post.userEmail.split('@')[0]);
-        }
-        this.isOwner = this.post.userEmail && this.post.userEmail.split('@')[0] === username;
-        console.log('Is owner:', this.isOwner);
+        this.isOwner = this.post.userEmail === userEmail;
       },
       error: (error) => {
         console.error('Error checking ownership:', error);

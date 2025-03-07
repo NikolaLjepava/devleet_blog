@@ -1,0 +1,43 @@
+<div class="comments-section">
+  <h3>Comments</h3>
+
+  <!-- Loop Through Comments -->
+  <div *ngFor="let comment of comments" class="comment">
+    <p>{{ comment.content }}</p>
+    <small>Posted by: {{ comment.userEmail }}</small>
+
+    <div class="comment-actions">
+      <button (click)="deleteComment(comment.id)" class="btn btn-danger">Delete</button>
+      <button (click)="updateComment(comment.id, comment.content)" class="btn btn-primary">Update</button>
+      <button (click)="upvoteComment(comment.id)" class="btn btn-success">Upvote</button>
+      <button (click)="downvoteComment(comment.id)" class="btn btn-warning">Downvote</button>
+      <span>Score: {{ comment.voteScore }}</span>
+    </div>
+
+    <!-- Reply Button -->
+    <button (click)="replyToComment(comment.id)">Reply</button>
+
+    <!-- Reply Input -->
+    <div *ngIf="replyingToCommentId === comment.id">
+      <textarea [(ngModel)]="replyContent" placeholder="Write your reply..."></textarea>
+      <button (click)="submitReply()">Submit Reply</button>
+    </div>
+
+    <!-- "See Replies" Button -->
+    <button *ngIf="comment.children.length > 0" (click)="comment.repliesVisible = !comment.repliesVisible">
+      {{ comment.repliesVisible ? 'Hide Replies' : 'See Replies' }}
+    </button>
+
+    <!-- Nested Comments -->
+    <div *ngIf="comment.repliesVisible" class="nested-comments">
+      <app-nested-comments [comments]="comment.children" (reply)="replyToComment($event)"></app-nested-comments>
+    </div>
+
+  </div>
+
+  <!-- New Top-Level Comment Form -->
+  <div class="add-comment">
+    <textarea [(ngModel)]="newCommentContent" placeholder="Write a comment..."></textarea>
+    <button (click)="createComment()" class="btn btn-primary">Post Comment</button>
+  </div>
+</div>
