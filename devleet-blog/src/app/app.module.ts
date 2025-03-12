@@ -19,6 +19,8 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { LogoutButtonComponent } from './components/logout-button/logout-button.component';
 import { PostDetailComponent } from './components/post-detail/post-detail.component';
+import { CommentsComponent } from './components/comments/comments.component';
+import { NestedCommentsComponent } from './components/nested-comments/nested-comments.component';
 
 @NgModule({
   declarations: [
@@ -33,6 +35,8 @@ import { PostDetailComponent } from './components/post-detail/post-detail.compon
     DeleteBlogComponent,
     LogoutButtonComponent,
     PostDetailComponent,
+    CommentsComponent,
+    NestedCommentsComponent,
   ],
   imports: [
     BrowserModule,

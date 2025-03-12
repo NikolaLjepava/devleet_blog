@@ -18,6 +18,13 @@ export type AmplifyDependentResourcesAttributes = {
     }
   },
   "function": {
+    "commentCRUD": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "devleetblog": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
@@ -34,6 +41,16 @@ export type AmplifyDependentResourcesAttributes = {
     }
   },
   "storage": {
+    "comments": {
+      "Arn": "string",
+      "Name": "string",
+      "PartitionKeyName": "string",
+      "PartitionKeyType": "string",
+      "Region": "string",
+      "SortKeyName": "string",
+      "SortKeyType": "string",
+      "StreamArn": "string"
+    },
     "devleetBlogDb": {
       "Arn": "string",
       "Name": "string",

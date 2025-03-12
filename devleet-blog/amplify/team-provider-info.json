@@ -23,11 +23,16 @@
         },
         "imageUpload": {
           "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
-          "s3Key": "amplify-builds/imageUpload-336b574b424b62396150-build.zip"
+          "s3Key": "amplify-builds/imageUpload-5a51316569624761502b-build.zip"
+        },
+        "commentCRUD": {
+          "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
+          "s3Key": "amplify-builds/commentCRUD-4c42795375376f465665-build.zip"
         }
       },
       "storage": {
-        "devleetBlogDb": {}
+        "devleetBlogDb": {},
+        "comments": {}
       },
       "api": {
         "blog": {}

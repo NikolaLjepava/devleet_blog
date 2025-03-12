@@ -52,6 +52,25 @@
     }
   },
   "function": {
+    "commentCRUD": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributeEnvMap": {
+            "Arn": "TABLE_ARN",
+            "Name": "TABLE_NAME"
+          },
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "storage",
+          "resourceName": "comments"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "devleetblog": {
       "build": true,
       "dependsOn": [
@@ -78,6 +97,22 @@
     }
   },
   "parameters": {
+    "AMPLIFY_function_commentCRUD_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "commentCRUD"
+        }
+      ]
+    },
+    "AMPLIFY_function_commentCRUD_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "commentCRUD"
+        }
+      ]
+    },
     "AMPLIFY_function_devleetblog_deploymentBucketName": {
       "usedBy": [
         {
@@ -112,6 +147,10 @@
     }
   },
   "storage": {
+    "comments": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
     "devleetBlogDb": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"

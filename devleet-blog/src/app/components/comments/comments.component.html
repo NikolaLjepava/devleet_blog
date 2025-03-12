@@ -1,0 +1,77 @@
+<div class="comments-section">
+  <h3>Comments</h3>
+
+  <!-- Iterate over all top-level comments -->
+  <div *ngFor="let comment of comments" class="comment">
+    <p>{{ comment.content }}</p>
+    <small>Posted by: {{ comment.userEmail }}</small>
+    <div class="comment-actions">
+      <button (click)="deleteComment(comment.id)" class="btn btn-danger">Delete</button>
+      <button (click)="updateComment(comment.id, comment.content)" class="btn btn-primary">Update</button>
+      <button (click)="upvoteComment(comment.id)" class="btn btn-success">Upvote</button>
+      <button (click)="downvoteComment(comment.id)" class="btn btn-warning">Downvote</button>
+      <span>Score: {{ comment.voteScore }}</span>
+    </div>  
+    <!-- Reply Button for Top-Level Comments -->
+    <button (click)="replyToComment(comment.id)">Reply</button>
+
+    <!-- Reply Input Field for Top-Level Comments -->
+    <div *ngIf="replyingToCommentId === comment.id">
+      <textarea [(ngModel)]="replyContent" placeholder="Write your reply..."></textarea>
+      <button (click)="submitReply(comment.id, replyContent)">Submit Reply</button>
+    </div>
+
+    <!-- Toggle "See Replies" Button for Top-Level Comments -->
+    <button *ngIf="comment.children?.length > 0" (click)="comment.repliesVisible = !comment.repliesVisible">
+      {{ comment.repliesVisible ? 'Hide Replies' : 'See Replies' }}
+    </button>
+
+    <!-- Recursively render nested comments -->
+    <ng-container *ngIf="comment.repliesVisible && comment.children && comment.children.length > 0">
+      <ng-container *ngTemplateOutlet="recursiveTemplate; context: {$implicit: comment.children}"></ng-container>
+    </ng-container>
+  </div>
+
+  <!-- New Top-Level Comment Form -->
+  <div class="add-comment">
+    <textarea [(ngModel)]="newCommentContent" placeholder="Write a comment..."></textarea>
+    <button (click)="createComment()" class="btn btn-primary">Post Comment</button>
+  </div>
+</div>
+
+<!-- Recursive template for nested comments -->
+<ng-template #recursiveTemplate let-comments>
+  <div *ngFor="let child of comments" class="nested-comment">
+    <p>{{ child.content }}</p>
+    <small>Posted by: {{ child.userEmail }}</small>
+    
+    <!-- Action buttons for nested comments -->
+    <div class="comment-actions">
+      <button (click)="deleteComment(child.id)" class="btn btn-danger">Delete</button>
+      <button (click)="updateComment(child.id, child.content)" class="btn btn-primary">Update</button>
+      <button (click)="upvoteComment(child.id)" class="btn btn-success">Upvote</button>
+      <button (click)="downvoteComment(child.id)" class="btn btn-warning">Downvote</button>
+      <span>Score: {{ child.voteScore }}</span>
+    </div>
+    
+    <!-- Reply Button for Nested Comments -->
+    <button (click)="replyToComment(child.id)">Reply</button>
+    
+    <!-- Toggle "See Replies" Button for Nested Comments -->
+    <button *ngIf="child.children?.length > 0" (click)="child.repliesVisible = !child.repliesVisible">
+      {{ child.repliesVisible ? 'Hide Replies' : 'See Replies' }}
+    </button>
+    
+    <!-- Reply Input Field for Nested Comments -->
+    <div *ngIf="replyingToCommentId === child.id">
+      <textarea [(ngModel)]="replyContent" placeholder="Write your reply..."></textarea>
+      <button (click)="submitReply(child.id, replyContent)">Submit Reply</button>
+    </div>
+    
+    <!-- Recursively render further nested comments -->
+    <ng-container *ngIf="child.repliesVisible && child.children && child.children.length > 0"
+                  [ngTemplateOutlet]="recursiveTemplate" 
+                  [ngTemplateOutletContext]="{ $implicit: child.children }">
+    </ng-container>
+  </div>
+</ng-template>

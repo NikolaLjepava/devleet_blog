@@ -1,0 +1,18 @@
+<div *ngFor="let comment of comments" class="comment">
+  <p>{{ comment.content }}</p>
+  <small>Posted by: {{ comment.userEmail }}</small>
+
+  <!-- Reply Button for Nested Comments -->
+  <button (click)="replyToComment(comment.id)">Reply</button>
+
+  <!-- Reply Input Field for Nested Comments -->
+  <div *ngIf="replyingToCommentId === comment.id">
+    <textarea [(ngModel)]="replyContent" placeholder="Write your reply..."></textarea>
+    <button (click)="submitReply()">Submit Reply</button>
+  </div>
+
+  <!-- Recursively show child comments (nested comments) -->
+  <div *ngIf="comment.children && comment.children.length > 0">
+    <app-nested-comments [comments]="comment.children" (reply)="replyToComment($event)"></app-nested-comments>
+  </div>
+</div>
