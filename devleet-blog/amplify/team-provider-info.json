@@ -27,7 +27,7 @@
         },
         "commentCRUD": {
           "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
-          "s3Key": "amplify-builds/commentCRUD-4d5a574f41615567334d-build.zip"
+          "s3Key": "amplify-builds/commentCRUD-4c42795375376f465665-build.zip"
         }
       },
       "storage": {

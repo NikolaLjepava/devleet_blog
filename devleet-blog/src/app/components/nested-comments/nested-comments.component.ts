@@ -22,28 +22,28 @@ export class NestedCommentsComponent {
   }
 
   // Function to submit the reply
-  submitReply() {
-    if (this.replyContent.trim() && this.replyingToCommentId) {
-      this.apiService.createComment(this.replyContent, this.replyingToCommentId).subscribe({
-        next: (data) => {
-          // Find the parent comment and add the reply to its children array
-          const parentComment = this.comments.find(comment => comment.id === this.replyingToCommentId);
-          if (parentComment) {
-            // Ensure the children array exists
-            if (!parentComment.children) {
-              parentComment.children = [];  // Initialize children array if not present
-            }
-            parentComment.children.push(data);  // Add the new reply to the children array
-          }
+  // submitReply() {
+  //   if (this.replyContent.trim() && this.replyingToCommentId) {
+  //     this.apiService.createComment(this.replyContent, this.replyingToCommentId).subscribe({
+  //       next: (data) => {
+  //         // Find the parent comment and add the reply to its children array
+  //         const parentComment = this.comments.find(comment => comment.id === this.replyingToCommentId);
+  //         if (parentComment) {
+  //           // Ensure the children array exists
+  //           if (!parentComment.children) {
+  //             parentComment.children = [];  // Initialize children array if not present
+  //           }
+  //           parentComment.children.push(data);  // Add the new reply to the children array
+  //         }
   
-          // Reset after submitting the reply
-          this.replyContent = '';  // Clear the reply content
-          this.replyingToCommentId = null;  // Reset the replyingToCommentId to null
-        },
-        error: (error) => {
-          console.error('Error submitting reply:', error);
-        }
-      });
-    }
-  }  
+  //         // Reset after submitting the reply
+  //         this.replyContent = '';  // Clear the reply content
+  //         this.replyingToCommentId = null;  // Reset the replyingToCommentId to null
+  //       },
+  //       error: (error) => {
+  //         console.error('Error submitting reply:', error);
+  //       }
+  //     });
+  //   }
+  // }  
 }

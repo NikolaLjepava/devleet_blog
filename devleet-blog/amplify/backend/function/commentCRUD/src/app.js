@@ -9,7 +9,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const { DeleteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, UpdateCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const awsServerlessExpressMiddleware = require('aws-serverless-express/middleware')
 const bodyParser = require('body-parser')
 const express = require('express')
@@ -272,44 +272,124 @@ app.post('/comments', async (req, res) => {
 
     // If this is a reply, update parent comment to `hasReplies: true`
     if (parentId) {
-      const updateParentParams = {
-        TableName: tableName,
-        Key: { id: parentId },
-        UpdateExpression: 'set hasReplies = :true',
-        ExpressionAttributeValues: { ':true': true },
-      };
-      await ddbDocClient.send(new UpdateCommand(updateParentParams));
+      let currentParentId = parentId;
+
+      // Recursively update `hasReplies` for all ancestor comments
+      while (currentParentId) {
+        const updateParentParams = {
+          TableName: tableName,
+          Key: { id: currentParentId, postId: postId },
+          UpdateExpression: 'SET hasReplies = :true',
+          ExpressionAttributeValues: { ':true': true },
+          ReturnValues: 'UPDATED_NEW',
+        };
+        await ddbDocClient.send(new UpdateCommand(updateParentParams));
+
+        // Get the next parent to continue the recursion
+        const getParentParams = {
+          TableName: tableName,
+          Key: { id: currentParentId, postId: postId },
+        };
+        const parentData = await ddbDocClient.send(new GetCommand(getParentParams));
+        const parentComment = parentData.Item;
+
+        currentParentId = parentComment ? parentComment.parentId : null;
+      }
     }
 
     res.json(params.Item);
   } catch (error) {
-    res.status(500).json({ error: 'Could not create comment' });
-  }
+    console.error('Error creating comment:', error);
+    res.status(500).json({ error: 'Could not create comment', details: error.message });
+  }  
 });
 
 app.post('/comments/:id/vote', async (req, res) => {
-  const { id } = req.params;
-  const { voteType } = req.body; // Either 'upvote' or 'downvote'
+  const { id } = req.params; // commentId
+  const { voteType, postId, userId } = req.body; // userId
 
   if (!['upvote', 'downvote'].includes(voteType)) {
     return res.status(400).json({ error: 'Invalid vote type' });
   }
 
-  const fieldToUpdate = voteType === 'upvote' ? 'upvotes' : 'downvotes'; //which field to update based on vote type
-
-  const updateParams = {
-    TableName: tableName,
-    Key: { id },
-    UpdateExpression: `set ${fieldToUpdate} = ${fieldToUpdate} + :inc`,
-    ExpressionAttributeValues: { ':inc': 1 },
-    ReturnValues: 'UPDATED_NEW', // this ensures that the updated values are returned in the response
-  };
+  // convert voteType to a numeric value: 1 for upvote, -1 for downvote
+  const newVoteValue = voteType === 'upvote' ? 1 : -1;
 
   try {
-    const data = await ddbDocClient.send(new UpdateCommand(updateParams));
-    res.json(data.Attributes);
+    // check if the user has already voted on this comment
+    const getVoteParams = {
+      TableName: 'votes',
+      Key: { commentId: id, userId: userId },
+    };
+
+    let existingVote;
+    try {
+      const voteData = await ddbDocClient.send(new GetCommand(getVoteParams));
+      existingVote = voteData.Item;
+    } catch (e) {
+      // not found is treated as no vote
+      existingVote = null;
+    }
+
+    let voteAdjustment = 0;
+    if (existingVote) {
+      if (existingVote.voteValue === newVoteValue) {
+        // User clicked the same vote again to undo it
+        voteAdjustment = -newVoteValue;  // reverse the previous vote
+        const deleteVoteParams = {
+          TableName: 'votes',
+          Key: { commentId: id, userId: userId },
+        };
+        await ddbDocClient.send(new DeleteCommand(deleteVoteParams));
+      } else {
+        // user is switching vote from 1 to -1 or vice versa:
+        // from +1 to -1 => -2 or from -1 to +1 => +2 
+        // because we are reversing the previous vote and adding the new vote
+        voteAdjustment = newVoteValue - existingVote.voteValue;
+        // Update the vote record
+        const updateVoteParams = {
+          TableName: 'votes',
+          Key: { commentId: id, userId: userId },
+          UpdateExpression: 'SET voteValue = :newVal',
+          ExpressionAttributeValues: { ':newVal': newVoteValue },
+          ReturnValues: 'ALL_NEW',
+        };
+        await ddbDocClient.send(new UpdateCommand(updateVoteParams));
+      }
+    } else {
+      // if there is no existing vote create one
+      voteAdjustment = newVoteValue;
+      const putVoteParams = {
+        TableName: 'votes',
+        Item: { commentId: id, userId: userId, voteValue: newVoteValue }
+      };
+      await ddbDocClient.send(new PutCommand(putVoteParams));
+    }
+    // if voteAdjustment is positive, it means an upvote change; if negative, a downvote change.
+    let updateExpression;
+    let expressionAttributeValues;
+    if (voteAdjustment > 0) {
+      updateExpression = 'SET upvotes = upvotes + :inc';
+      expressionAttributeValues = { ':inc': voteAdjustment };
+    } else {
+      updateExpression = 'SET downvotes = downvotes + :inc';
+      expressionAttributeValues = { ':inc': -voteAdjustment };
+    }
+    const updateCommentParams = {
+      TableName: tableName,
+      Key: { id, postId },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: 'ALL_NEW',
+    };
+    const updatedCommentData = await ddbDocClient.send(new UpdateCommand(updateCommentParams));
+    // recalc voteScore here:
+    const updatedComment = updatedCommentData.Attributes;
+    updatedComment.voteScore = (updatedComment.upvotes || 0) - (updatedComment.downvotes || 0);
+    res.json(updatedComment);
   } catch (error) {
-    res.status(500).json({ error: 'Could not vote on comment' });
+    console.error('Error voting on comment:', error);
+    res.status(500).json({ error: 'Could not vote on comment', details: error.message });
   }
 });
 
@@ -320,10 +400,17 @@ app.post('/comments/:id/vote', async (req, res) => {
 
 app.delete('/comments/:id', async (req, res) => {
   const { id } = req.params;
-  const { userEmail } = req.body; // Frontend must send current user email so we know if they can delete
+  const { userEmail, postId } = req.query; // Now including postId
+
+  if (!userEmail || !postId) {
+    return res.status(400).json({ error: 'Missing userEmail or postId' });
+  }
 
   // Get the comment to check permissions & replies
-  const getCommentParams = { TableName: tableName, Key: { id } };
+  const getCommentParams = { 
+    TableName: tableName, 
+    Key: { id, postId } // Use both keys
+  };
 
   try {
     const data = await ddbDocClient.send(new GetCommand(getCommentParams));
@@ -339,20 +426,23 @@ app.delete('/comments/:id', async (req, res) => {
     }
 
     // Ensure only author or blog owner can delete
-    if (comment.userEmail !== userEmail /* && blogPostOwner !== userEmail */) {
+    if (comment.userEmail !== userEmail) {
       return res.status(403).json({ error: 'Unauthorized to delete this comment' });
     }
 
     // Proceed with deletion
-    const deleteParams = { TableName: tableName, Key: { id } };
+    const deleteParams = { 
+      TableName: tableName, 
+      Key: { id, postId }  // Use both keys
+    };
     await ddbDocClient.send(new DeleteCommand(deleteParams));
 
     res.json({ message: 'Comment deleted successfully', id });
   } catch (error) {
-    res.status(500).json({ error: 'Could not delete comment' });
+    console.error('Error deleting comment:', error);
+    res.status(500).json({ error: 'Could not delete comment', details: error.message });
   }
 });
-
 
 app.listen(3000, function() {
   console.log("App started")

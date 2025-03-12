@@ -26,12 +26,12 @@ export class ApiService {
     );
   }
 
-  createComment(content: string, postId: string, parentId: string | null = null): Observable<any> {
+  createComment(content: string, postId: string, parentId: string | null = null, userEmail: string): Observable<any> {
     const url = `${this.apiUrl}/comments`;
-    const body = { postId, content, parentId, userEmail: 'user@example.com' };
+    const body = { postId, content, parentId, userEmail };
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    console.log('Creating comment:', { postId, content, parentId });
-
+    console.log('Creating comment:', { postId, content, parentId, userEmail });
+  
     return this.http.post(url, body, { headers }).pipe(
       catchError((error) => {
         console.error('Error creating comment:', error);
@@ -39,6 +39,7 @@ export class ApiService {
       })
     );
   }
+  
   
   listComments(parentId: string) {
     const url = `${this.apiUrl}/comments/${parentId}`;
@@ -75,10 +76,9 @@ export class ApiService {
     return rootComments;
   }  
   
-  deleteComment(commentId: string): Observable<any> {
-    const url = `${this.apiUrl}/comments/${commentId}`;
+  deleteComment(commentId: string, userEmail: string, postId: string): Observable<any> {
+    const url = `${this.apiUrl}/comments/${commentId}?userEmail=${encodeURIComponent(userEmail)}&postId=${encodeURIComponent(postId)}`;
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-
     return this.http.delete(url, { headers }).pipe(
       catchError((error) => {
         console.error('Error deleting comment:', error);
@@ -100,11 +100,10 @@ export class ApiService {
     );
   }
 
-  upvoteComment(commentId: string): Observable<any> {
+  upvoteComment(commentId: string, postId: string, userId: string): Observable<any> {
     const url = `${this.apiUrl}/comments/${commentId}/vote`;
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-  
-    return this.http.post(url, { voteType: 'upvote' }, { headers }).pipe(
+    return this.http.post(url, { voteType: 'upvote', postId: postId, userId: userId }, { headers }).pipe(
       catchError((error) => {
         console.error('Error upvoting comment:', error);
         return throwError(() => new Error('Failed to upvote comment'));
@@ -112,15 +111,14 @@ export class ApiService {
     );
   }
   
-  downvoteComment(commentId: string): Observable<any> {
+  downvoteComment(commentId: string, postId: string, userId: string): Observable<any> {
     const url = `${this.apiUrl}/comments/${commentId}/vote`;
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-  
-    return this.http.post(url, { voteType: 'downvote' }, { headers }).pipe(
+    return this.http.post(url, { voteType: 'downvote', postId: postId, userId: userId }, { headers }).pipe(
       catchError((error) => {
         console.error('Error downvoting comment:', error);
         return throwError(() => new Error('Failed to downvote comment'));
       })
     );
-  }  
+  }
 }

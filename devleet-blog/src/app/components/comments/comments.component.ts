@@ -1,6 +1,8 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { map, switchMap } from 'rxjs/operators';
+import { throwError } from 'rxjs';
 
 @Component({
   selector: 'app-comments',
@@ -17,10 +19,10 @@ export class CommentsComponent implements OnInit {
 
   constructor(
     private apiService: ApiService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
-
     this.fetchComments();
   }
 
@@ -40,27 +42,40 @@ export class CommentsComponent implements OnInit {
     });
   }
   
-  
-
   createComment() {
     if (this.newCommentContent.trim()) {
-      this.apiService.createComment(this.newCommentContent, this.postId.toString(), null).subscribe({
-        next: (data) => {
-          this.comments.push(data);
-          this.newCommentContent = '';
+      this.authService.getUserEmail().subscribe({
+        next: (userEmail) => {
+          this.apiService.createComment(this.newCommentContent, this.postId.toString(), null, userEmail).subscribe({
+            next: (data) => {
+              this.comments.push(data);
+              this.newCommentContent = '';
+            },
+            error: (error) => {
+              console.error('Error creating comment:', error);
+            }
+          });
         },
-        error: (error) => {
-          console.error('Error creating comment:', error);
+        error: (err) => {
+          console.error('Error fetching user email:', err);
         }
       });
     }
-  }
+  }  
   
-
   deleteComment(commentId: string) {
-    this.apiService.deleteComment(commentId).subscribe({
+    this.authService.getUserEmail().pipe(
+      switchMap(userEmail => {
+        const comment = this.findCommentById(this.comments, commentId);
+        if (comment) {
+          return this.apiService.deleteComment(commentId, userEmail, comment.postId);
+        } else {
+          return throwError(() => new Error("Comment not found"));
+        }
+      })
+    ).subscribe({
       next: () => {
-        this.comments = this.comments.filter(comment => comment.id !== commentId);
+        this.removeCommentFromTree(commentId);
       },
       error: (error) => {
         console.error('Error deleting comment:', error);
@@ -71,10 +86,7 @@ export class CommentsComponent implements OnInit {
   updateComment(commentId: string, content: string) {
     this.apiService.updateComment(commentId, content).subscribe({
       next: (updatedComment) => {
-        const index = this.comments.findIndex(comment => comment.id === commentId);
-        if (index !== -1) {
-          this.comments[index] = updatedComment;
-        }
+        this.updateCommentInTree(commentId, updatedComment);
       },
       error: (error) => {
         console.error('Error updating comment:', error);
@@ -87,67 +99,132 @@ export class CommentsComponent implements OnInit {
     this.replyContent = ''; // Reset the reply content
   }
 
- submitReply() {
-  if (this.replyContent.trim() && this.replyingToCommentId) {
-    this.apiService.createComment(this.replyContent, this.postId.toString(), this.replyingToCommentId).subscribe({
-      next: (data) => {
-        const addReplyToParent = (comments: any[]) => {
-          for (let comment of comments) {
-            if (comment.id === this.replyingToCommentId) {
-              if (!comment.replies) {
-                comment.replies = [];
-              }
-              comment.replies.push(data);
-              return true; // Stop recursion once added
-            } else if (comment.replies) {
-              if (addReplyToParent(comment.replies)) {
-                return true; // Stop recursion once added
+  submitReply(commentId: string, replyContent: string) {
+    if (replyContent.trim() && commentId) {
+      this.authService.getUserEmail().pipe(
+        switchMap((userEmail: string) =>
+          this.apiService.createComment(replyContent, this.postId.toString(), commentId, userEmail)
+        )
+      ).subscribe({
+        next: (data) => {
+          // Recursively add the reply to the correct parent comment
+          const addReplyToParent = (comments: any[]): boolean => {
+            for (let comment of comments) {
+              if (comment.id === commentId) {
+                if (!comment.replies) {
+                  comment.replies = [];  // Ensure replies array exists
+                }
+                comment.replies.push(data);  // Add the new reply
+                // Set `hasReplies` to true for the parent comment
+                comment.hasReplies = true;
+                return true;  // Stop recursion once added
+              } else if (comment.replies) {
+                if (addReplyToParent(comment.replies)) {
+                  return true;
+                }
               }
             }
-          }
-          return false;
-        };
-
-        addReplyToParent(this.comments);
-
-        // Reset reply input
-        this.replyContent = '';
-        this.replyingToCommentId = null;
-      },
-      error: (error) => {
-        console.error('Error submitting reply:', error);
-      }
-    });
+            return false;
+          };
+          addReplyToParent(this.comments);
+          // Reset reply input and hide the reply box
+          this.replyContent = '';
+          this.replyingToCommentId = null;
+        },
+        error: (error) => {
+          console.error('Error submitting reply:', error);
+        }
+      });
+    }
   }
-}
-
+  
   upvoteComment(commentId: string) {
-    this.apiService.upvoteComment(commentId).subscribe({
-      next: (updatedComment) => {
-        const index = this.comments.findIndex(comment => comment.id === commentId);
-        if (index !== -1) {
-          // Update the comment with the latest upvote score
-          this.comments[index] = updatedComment;
+    this.authService.getCurrentUser().subscribe({
+      next: (user) => {
+        const userId = user.attributes.email;
+        const comment = this.findCommentById(this.comments, commentId);
+        if (comment) {
+          this.apiService.upvoteComment(commentId, comment.postId, userId).subscribe({
+            next: (updatedComment) => {
+              this.updateCommentInTree(commentId, updatedComment);
+            },
+            error: (error) => {
+              console.error('Error upvoting comment:', error);
+            }
+          });
         }
       },
-      error: (error) => {
-        console.error('Error upvoting comment:', error);
+      error: (err) => {
+        console.error('Error retrieving user:', err);
       }
     });
   }
 
   downvoteComment(commentId: string) {
-    this.apiService.downvoteComment(commentId).subscribe({
-      next: (updatedComment) => {
-        const index = this.comments.findIndex(comment => comment.id === commentId);
-        if (index !== -1) {
-          // Update the comment with the latest downvote score
-          this.comments[index] = updatedComment;
+    this.authService.getCurrentUser().subscribe({
+      next: (user) => {
+        const userId = user.attributes.email;
+        const comment = this.findCommentById(this.comments, commentId);
+        if (comment) {
+          this.apiService.downvoteComment(commentId, comment.postId, userId).subscribe({
+            next: (updatedComment) => {
+              this.updateCommentInTree(commentId, updatedComment);
+            },
+            error: (error) => {
+              console.error('Error downvoting comment:', error);
+            }
+          });
         }
       },
-      error: (error) => {
-        console.error('Error downvoting comment:', error);
+      error: (err) => {
+        console.error('Error retrieving user:', err);
       }
     });
+  }
+
+  private removeCommentFromTree(commentId: string): void {
+    const removeRecursively = (comments: any[]): any[] => {
+      return comments.filter(comment => {
+        if (comment.id === commentId) {
+          return false;
+        }
+        if (comment.children && comment.children.length > 0) {
+          comment.children = removeRecursively(comment.children);
+        }
+        return true;
+      });
+    };
+    this.comments = removeRecursively(this.comments);
+  }
+
+  private updateCommentInTree(commentId: string, updatedComment: any): void {
+    const updateRecursively = (comments: any[]) => {
+      for (let i = 0; i < comments.length; i++) {
+        if (comments[i].id === commentId) {
+          comments[i] = updatedComment;
+          return true;
+        }
+        if (comments[i].children && comments[i].children.length > 0) {
+          if (updateRecursively(comments[i].children)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    updateRecursively(this.comments);
+  }  
+  
+  private findCommentById(comments: any[], commentId: string): any {
+    for (let comment of comments) {
+      if (comment.id === commentId) {
+        return comment;
+      }
+      if (comment.children && comment.children.length > 0) {
+        const found = this.findCommentById(comment.children, commentId);
+        if (found) return found;
+      }
+    }
+    return null;
   }
 }

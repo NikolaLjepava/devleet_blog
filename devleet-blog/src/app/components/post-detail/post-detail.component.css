@@ -35,13 +35,13 @@
 }
 
 .comment {
-  display: block !important;
   margin-left: 20px;
   padding: 15px;
   margin-bottom: 15px;
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
 .comment p {
@@ -60,39 +60,38 @@
   margin-right: 10px;
 }
 
-.comment-form {
-  margin-top: 20px;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.comment-form textarea {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  margin-bottom: 10px;
-  font-size: 1em;
-}
-
-.comment-form .btn {
-  display: block;
-  width: 100%;
-  padding: 10px;
-  font-size: 1em;
-  border-radius: 8px;
-  max-width: 200px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.comment {
-  position: relative;
-}
-
 .comment .nested-comments {
-  margin-left: 20px; /* Indent nested replies */
+  margin-left: 20px;
   padding-left: 10px;
-  border-left: 2px solid #ddd; /* Visual indicator for nested comments */
+  border-left: 2px solid #ddd;
+  min-height: 20px; /* Make sure nested comments are visible */
+}
+
+.comment button {
+  display: inline-block;
+  padding: 8px 15px;
+  margin-top: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.comment button:hover {
+  background-color: #0056b3;
+}
+
+.comment .reply-button {
+  background-color: #28a745;
+  border: none;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.comment .reply-button:hover {
+  background-color: #218838;
 }
