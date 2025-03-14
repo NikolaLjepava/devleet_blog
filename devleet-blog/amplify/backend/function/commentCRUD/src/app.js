@@ -24,7 +24,7 @@ if (process.env.ENV && process.env.ENV !== "NONE") {
   tableName = tableName + '-' + process.env.ENV;
 }
 
-const userIdPresent = false; // TODO: update in case is required to use that definition
+const userIdPresent = false;
 const partitionKeyName = "id";
 const partitionKeyType = "S";
 const sortKeyName = "postId";
@@ -40,7 +40,7 @@ const app = express()
 app.use(bodyParser.json())
 app.use(awsServerlessExpressMiddleware.eventContext())
 
-// Enable CORS for all methods
+// enable CORS for all methods
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*")
   res.header("Access-Control-Allow-Headers", "*")
@@ -55,7 +55,7 @@ app.options('*', function(req, res) {
 });
 
 
-// Define the root route
+// define the root route
 app.get('/', (req, res) => {
   res.send('Welcome to the Comments API');
 });
@@ -82,15 +82,14 @@ app.get('/comments/:postId', async (req, res) => {
     IndexName: 'postId-index',
     KeyConditionExpression: 'postId = :postId',
     ExpressionAttributeValues: { ':postId': postId },
+    ScanIndexForward: false // sort descending, highest votes first
   };
 
   try {
     const data = await ddbDocClient.send(new QueryCommand(params));
-    console.log('Fetched Comments:', data.Items);
-    // Build nested comment structure
-    const nestedComments = buildNestedComments(data.Items);
+    const sortedComments = buildNestedComments(data.Items);
 
-    res.json(nestedComments);
+    res.json(sortedComments);
   } catch (error) {
     res.status(500).json({ error: 'Could not fetch comments' });
   }
@@ -98,25 +97,34 @@ app.get('/comments/:postId', async (req, res) => {
 
 function buildNestedComments(comments) {
   const commentMap = {};
-  const nestedComments = [];
+  const rootComments = [];
 
-  // Initialize each comment in the map
+  // Create map and calculate voteScore
   comments.forEach(comment => {
+    comment.voteScore = (comment.upvotes || 0) - (comment.downvotes || 0);
     comment.children = [];
-    comment.voteScore = (comment.upvotes || 0) - (comment.downvotes || 0); // Calculate vote score
     commentMap[comment.id] = comment;
   });
 
-  // Build tree structure
+  // Build hierarchy
   comments.forEach(comment => {
-    if (comment.parentId) {
-      commentMap[comment.parentId]?.children.push(comment);
-    } else {
-      nestedComments.push(comment); // Root-level comments
+    if (comment.parentId && commentMap[comment.parentId]) {
+      commentMap[comment.parentId].children.push(comment);
+      // Sort children by voteScore descending
+      commentMap[comment.parentId].children.sort((a, b) => 
+        (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes)
+      );
+    } else if (!comment.parentId) {
+      rootComments.push(comment);
     }
   });
 
-  return nestedComments;
+  // Sort root comments by voteScore descending
+  rootComments.sort((a, b) => 
+    (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes)
+  );
+
+  return rootComments;
 }
 
 
@@ -209,7 +217,7 @@ app.put('/comments/:id', async (req, res) => {
   const { content, userEmail } = req.body;
   const updatedAt = new Date().toISOString();
 
-  // Fetch comment to verify ownership
+  // fetch comment to verify ownership
   const getParams = { TableName: tableName, Key: { id } };
 
   try {
@@ -224,7 +232,7 @@ app.put('/comments/:id', async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized to update this comment' });
     }
 
-    // Proceed with update
+    // proceed with update
     const updateParams = {
       TableName: tableName,
       Key: { id },
@@ -263,18 +271,18 @@ app.post('/comments', async (req, res) => {
       updatedAt,
       upvotes: 0,
       downvotes: 0,
-      hasReplies: false, // Default value
+      hasReplies: false, // default value
     },
   };
 
   try {
     await ddbDocClient.send(new PutCommand(params));
 
-    // If this is a reply, update parent comment to `hasReplies: true`
+    // if this is a reply, update parent comment to `hasReplies: true`
     if (parentId) {
       let currentParentId = parentId;
 
-      // Recursively update `hasReplies` for all ancestor comments
+      // recursively update `hasReplies` for all ancestor comments
       while (currentParentId) {
         const updateParentParams = {
           TableName: tableName,
@@ -285,7 +293,7 @@ app.post('/comments', async (req, res) => {
         };
         await ddbDocClient.send(new UpdateCommand(updateParentParams));
 
-        // Get the next parent to continue the recursion
+        // get the next parent to continue the recursion
         const getParentParams = {
           TableName: tableName,
           Key: { id: currentParentId, postId: postId },
@@ -306,20 +314,19 @@ app.post('/comments', async (req, res) => {
 
 app.post('/comments/:id/vote', async (req, res) => {
   const { id } = req.params; // commentId
-  const { voteType, postId, userId } = req.body; // userId
+  const { voteType, postId, userId } = req.body;
 
   if (!['upvote', 'downvote'].includes(voteType)) {
     return res.status(400).json({ error: 'Invalid vote type' });
   }
 
-  // convert voteType to a numeric value: 1 for upvote, -1 for downvote
   const newVoteValue = voteType === 'upvote' ? 1 : -1;
 
   try {
-    // check if the user has already voted on this comment
+    // Existing vote check
     const getVoteParams = {
       TableName: 'votes',
-      Key: { commentId: id, userId: userId },
+      Key: { commentId: id, userId },
     };
 
     let existingVote;
@@ -327,69 +334,66 @@ app.post('/comments/:id/vote', async (req, res) => {
       const voteData = await ddbDocClient.send(new GetCommand(getVoteParams));
       existingVote = voteData.Item;
     } catch (e) {
-      // not found is treated as no vote
       existingVote = null;
     }
 
     let voteAdjustment = 0;
+    let finalVoteValue = newVoteValue;
+
     if (existingVote) {
       if (existingVote.voteValue === newVoteValue) {
-        // User clicked the same vote again to undo it
-        voteAdjustment = -newVoteValue;  // reverse the previous vote
-        const deleteVoteParams = {
+        // Undo vote
+        voteAdjustment = -newVoteValue;
+        finalVoteValue = 0;
+        await ddbDocClient.send(new DeleteCommand({
           TableName: 'votes',
-          Key: { commentId: id, userId: userId },
-        };
-        await ddbDocClient.send(new DeleteCommand(deleteVoteParams));
+          Key: { commentId: id, userId }
+        }));
       } else {
-        // user is switching vote from 1 to -1 or vice versa:
-        // from +1 to -1 => -2 or from -1 to +1 => +2 
-        // because we are reversing the previous vote and adding the new vote
+        // Switch vote
         voteAdjustment = newVoteValue - existingVote.voteValue;
-        // Update the vote record
-        const updateVoteParams = {
+        await ddbDocClient.send(new UpdateCommand({
           TableName: 'votes',
-          Key: { commentId: id, userId: userId },
+          Key: { commentId: id, userId },
           UpdateExpression: 'SET voteValue = :newVal',
           ExpressionAttributeValues: { ':newVal': newVoteValue },
-          ReturnValues: 'ALL_NEW',
-        };
-        await ddbDocClient.send(new UpdateCommand(updateVoteParams));
+        }));
       }
     } else {
-      // if there is no existing vote create one
+      // New vote
       voteAdjustment = newVoteValue;
-      const putVoteParams = {
+      await ddbDocClient.send(new PutCommand({
         TableName: 'votes',
-        Item: { commentId: id, userId: userId, voteValue: newVoteValue }
-      };
-      await ddbDocClient.send(new PutCommand(putVoteParams));
+        Item: { commentId: id, userId, voteValue: newVoteValue }
+      }));
     }
-    // if voteAdjustment is positive, it means an upvote change; if negative, a downvote change.
-    let updateExpression;
-    let expressionAttributeValues;
-    if (voteAdjustment > 0) {
-      updateExpression = 'SET upvotes = upvotes + :inc';
-      expressionAttributeValues = { ':inc': voteAdjustment };
-    } else {
-      updateExpression = 'SET downvotes = downvotes + :inc';
-      expressionAttributeValues = { ':inc': -voteAdjustment };
-    }
+
+    // Calculate net changes
+    const previousVote = existingVote?.voteValue || 0;
+    const upvotesChange = (finalVoteValue === 1 ? 1 : 0) - (previousVote === 1 ? 1 : 0);
+    const downvotesChange = (finalVoteValue === -1 ? 1 : 0) - (previousVote === -1 ? 1 : 0);
+
+    // Update comment metrics
     const updateCommentParams = {
       TableName: tableName,
-      Key: { id, postId },
-      UpdateExpression: updateExpression,
-      ExpressionAttributeValues: expressionAttributeValues,
+      Key: { id, postId},
+      UpdateExpression: `
+        SET 
+          upvotes = upvotes + :upvotesChange,
+          downvotes = downvotes + :downvotesChange
+      `,
+      ExpressionAttributeValues: {
+        ':upvotesChange': upvotesChange,
+        ':downvotesChange': downvotesChange,
+      },
       ReturnValues: 'ALL_NEW',
     };
+
     const updatedCommentData = await ddbDocClient.send(new UpdateCommand(updateCommentParams));
-    // recalc voteScore here:
-    const updatedComment = updatedCommentData.Attributes;
-    updatedComment.voteScore = (updatedComment.upvotes || 0) - (updatedComment.downvotes || 0);
-    res.json(updatedComment);
+    res.json(updatedCommentData.Attributes);
   } catch (error) {
-    console.error('Error voting on comment:', error);
-    res.status(500).json({ error: 'Could not vote on comment', details: error.message });
+    console.error('Error voting:', error);
+    res.status(500).json({ error: 'Voting failed', details: error.message });
   }
 });
 
@@ -400,16 +404,16 @@ app.post('/comments/:id/vote', async (req, res) => {
 
 app.delete('/comments/:id', async (req, res) => {
   const { id } = req.params;
-  const { userEmail, postId } = req.query; // Now including postId
+  const { userEmail, postId } = req.query;
 
   if (!userEmail || !postId) {
     return res.status(400).json({ error: 'Missing userEmail or postId' });
   }
 
-  // Get the comment to check permissions & replies
+  // get the comment to check permissions & replies
   const getCommentParams = { 
     TableName: tableName, 
-    Key: { id, postId } // Use both keys
+    Key: { id, postId }
   };
 
   try {
@@ -420,20 +424,20 @@ app.delete('/comments/:id', async (req, res) => {
       return res.status(404).json({ error: 'Comment not found' });
     }
 
-    // Prevent deletion if it has replies
+    // prevent deletion if it has replies
     if (comment.hasReplies) {
       return res.status(400).json({ error: 'Cannot delete a comment with replies' });
     }
 
-    // Ensure only author or blog owner can delete
+    // ensure only author or blog owner can delete
     if (comment.userEmail !== userEmail) {
       return res.status(403).json({ error: 'Unauthorized to delete this comment' });
     }
 
-    // Proceed with deletion
+    // proceed with deletion
     const deleteParams = { 
       TableName: tableName, 
-      Key: { id, postId }  // Use both keys
+      Key: { id, postId }
     };
     await ddbDocClient.send(new DeleteCommand(deleteParams));
 

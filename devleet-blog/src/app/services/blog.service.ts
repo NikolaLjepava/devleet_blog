@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, from, throwError } from 'rxjs';
 import { catchError, switchMap, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
@@ -29,43 +29,44 @@ export class BlogService {
     );
   }
 
-  createPost(postData: { id: number; title: string; content: string }, imageData?: string, fileExtension?: string): Observable<any> {
+  createPost(
+    postData: { id: number; title: string; content: string },
+    imageData?: string,
+    fileExtension?: string
+  ): Observable<any> {
     return this.authService.getHeaders().pipe(
-      switchMap((headers) => {
-        return this.authService.getUserEmail().pipe(
-          switchMap((userEmail) => {
-            const postWithUserEmail = { 
-              ...postData, 
-              userEmail: userEmail,
-              imageUrl: ''
+      switchMap(headers => 
+        this.authService.getUserEmail().pipe(
+          switchMap(userEmail => {
+            const payload = {
+              ...postData,
+              userEmail,
+              imageData,
+              fileExtension
             };
-            console.log("The user's email is: ", userEmail);
-            if (imageData && fileExtension) {
-              console.log('Uploading image with data:', imageData, 'and file extension:', fileExtension);
-              return this.apiService.uploadImage(imageData, fileExtension).pipe(
-                switchMap((uploadResponse) => {
-                  console.log('Image uploaded successfully:', uploadResponse);
-                  postWithUserEmail.imageUrl = uploadResponse.imageUrl;
-                  return this.http.post(`${this.apiUrl}`, postWithUserEmail, { headers }).pipe(
-                    catchError((error) => {
-                      console.error('Error creating post:', error);
-                      return throwError(() => new Error('Failed to create post'));
-                    })
-                  );
-                })
-              );
-            } else {
-              return this.http.post(`${this.apiUrl}`, postWithUserEmail, { headers }).pipe(
-                catchError((error) => {
-                  console.error('Error creating post:', error);
-                  return throwError(() => new Error('Failed to create post'));
-                })
-              );
-            }
+  
+            return this.http.post(`${this.apiUrl}`, payload, { headers }).pipe(
+              tap(response => console.log('Post created:', response)),
+              catchError(error => {
+                console.error('Full error:', error);
+                return throwError(() => this.parseError(error));
+              })
+            );
+          }),
+          catchError(authError => {
+            console.error('Auth error:', authError);
+            return throwError(() => new Error('Authentication failed'));
           })
-        );
-      })
+        )
+      )
     );
+  }
+  
+  private parseError(error: HttpErrorResponse): Error {
+    if (error.error?.message) {
+      return new Error(error.error.message);
+    }
+    return new Error('Unknown error occurred');
   }
 
  // Get a single blog post by ID

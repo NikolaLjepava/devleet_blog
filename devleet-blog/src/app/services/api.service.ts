@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { AuthService } from './auth.service';
+
 // this service is used for communicating with comments and image uploads
 @Injectable({
   providedIn: 'root'
@@ -9,19 +11,21 @@ import { catchError, map } from 'rxjs/operators';
 export class ApiService {
   private apiUrl = 'https://gocqije9g1.execute-api.eu-north-1.amazonaws.com/dev';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private authService: AuthService) {}
 
   uploadImage(imageData: string, fileExtension: string): Observable<any> {
-    const url = `${this.apiUrl}/upload-image`;
-    const body = { imageData, fileExtension };
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-
-    console.log('Uploading image with body:', body);
-
-    return this.http.post(url, body, { headers }).pipe(
-      catchError((error) => {
-        console.error('Error uploading image:', error);
-        return throwError(() => new Error('Failed to upload image'));
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + this.authService.getAccessToken()
+    });
+  
+    return this.http.post(`${this.apiUrl}/upload-image`, 
+      { imageData, fileExtension },
+      { headers }
+    ).pipe(
+      catchError(error => {
+        console.error('Full error:', error);
+        return throwError(() => new Error('Upload failed'));
       })
     );
   }
@@ -52,29 +56,35 @@ export class ApiService {
     );
   }
   
-  buildCommentTree(comments: any[]) {
-    let commentMap = {};
-    let rootComments = [];
+  buildCommentTree(comments: any[]): any[] {
+    const commentMap = {};
+    const rootComments = [];
   
+    // First pass: create map and calculate scores
     comments.forEach(comment => {
-      comment.children = comment.children || [];
-      comment.repliesVisible = false;  // Initialize replies visibility
-      commentMap[comment.id] = comment;
+      commentMap[comment.id] = {
+        ...comment,
+        voteScore: (comment.upvotes || 0) - (comment.downvotes || 0),
+        children: comment.children || [] // Preserve existing children
+      };
     });
   
+    // Second pass: build hierarchy
     comments.forEach(comment => {
-      if (comment.parentId) {
-        let parent = commentMap[comment.parentId];
-        if (parent) {
-          parent.children.push(comment);
-        }
-      } else {
-        rootComments.push(comment);
+      if (comment.parentId && commentMap[comment.parentId]) {
+        commentMap[comment.parentId].children.push(commentMap[comment.id]);
+        // Sort children after update
+        commentMap[comment.parentId].children.sort((a, b) => 
+          b.voteScore - a.voteScore
+        );
+      } else if (!comment.parentId) {
+        rootComments.push(commentMap[comment.id]);
       }
     });
   
-    return rootComments;
-  }  
+    // Sort root comments
+    return rootComments.sort((a, b) => b.voteScore - a.voteScore);
+  }
   
   deleteComment(commentId: string, userEmail: string, postId: string): Observable<any> {
     const url = `${this.apiUrl}/comments/${commentId}?userEmail=${encodeURIComponent(userEmail)}&postId=${encodeURIComponent(postId)}`;

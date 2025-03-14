@@ -29,12 +29,13 @@ export class CommentsComponent implements OnInit {
   fetchComments(): void {
     this.apiService.listComments(this.postId.toString()).subscribe({
       next: (data) => {
-        this.comments = data.map(comment => ({
-          ...comment,
-          repliesVisible: false,  // Add repliesVisible for toggling visibility
-          children: comment.children || []  // Ensure children array is initialized
-        }));
-        console.log('Fetched structured comments:', this.comments);
+        // Build structured comments with sorting
+        const structuredComments = this.apiService.buildCommentTree(data);
+        
+        // Map to preserve UI state
+        this.comments = structuredComments.map(comment => 
+          this.addUIStateToComment(comment)
+        );
       },
       error: (error) => {
         console.error('Error fetching comments:', error);
@@ -42,11 +43,21 @@ export class CommentsComponent implements OnInit {
     });
   }
   
+  private addUIStateToComment(comment: any): any {
+    return {
+      ...comment,
+      repliesVisible: comment.repliesVisible || false,
+      children: (comment.children || []).map(child => 
+        this.addUIStateToComment(child)
+      )
+    };
+  }
+  
   createComment() {
     if (this.newCommentContent.trim()) {
       this.authService.getUserEmail().subscribe({
         next: (userEmail) => {
-          this.apiService.createComment(this.newCommentContent, this.postId.toString(), null, userEmail).subscribe({
+          this.apiService.createComment(this.newCommentContent, String(this.postId), null, userEmail).subscribe({
             next: (data) => {
               this.comments.push(data);
               this.newCommentContent = '';
@@ -103,7 +114,7 @@ export class CommentsComponent implements OnInit {
     if (replyContent.trim() && commentId) {
       this.authService.getUserEmail().pipe(
         switchMap((userEmail: string) =>
-          this.apiService.createComment(replyContent, this.postId.toString(), commentId, userEmail)
+          this.apiService.createComment(replyContent, String(this.postId), commentId, userEmail)
         )
       ).subscribe({
         next: (data) => {
@@ -139,12 +150,15 @@ export class CommentsComponent implements OnInit {
   }
   
   upvoteComment(commentId: string) {
+    console.log('Attempting to upvote comment:', commentId);
     this.authService.getCurrentUser().subscribe({
       next: (user) => {
         const userId = user.attributes.email;
         const comment = this.findCommentById(this.comments, commentId);
+        console.log('Found comment for voting:', comment);
         if (comment) {
-          this.apiService.upvoteComment(commentId, comment.postId, userId).subscribe({
+          const postId = String(comment.postId);
+          this.apiService.upvoteComment(commentId, postId, userId).subscribe({
             next: (updatedComment) => {
               this.updateCommentInTree(commentId, updatedComment);
             },
@@ -166,7 +180,8 @@ export class CommentsComponent implements OnInit {
         const userId = user.attributes.email;
         const comment = this.findCommentById(this.comments, commentId);
         if (comment) {
-          this.apiService.downvoteComment(commentId, comment.postId, userId).subscribe({
+          const postId = String(comment.postId);
+          this.apiService.downvoteComment(commentId, postId, userId).subscribe({
             next: (updatedComment) => {
               this.updateCommentInTree(commentId, updatedComment);
             },
@@ -198,22 +213,34 @@ export class CommentsComponent implements OnInit {
   }
 
   private updateCommentInTree(commentId: string, updatedComment: any): void {
-    const updateRecursively = (comments: any[]) => {
-      for (let i = 0; i < comments.length; i++) {
-        if (comments[i].id === commentId) {
-          comments[i] = updatedComment;
+    // 1. Create a working copy
+    const commentsCopy = JSON.parse(JSON.stringify(this.comments));
+    
+    // 2. Update the comment in the copy
+    const updateRecursively = (comments: any[]): boolean => {
+      return comments.some((comment, index) => {
+        if (comment.id === commentId) {
+          comments[index] = {
+            ...updatedComment,
+            voteScore: updatedComment.upvotes - updatedComment.downvotes,
+            repliesVisible: comment.repliesVisible, // Preserve visibility
+            children: comment.children // Preserve child structure
+          };
           return true;
         }
-        if (comments[i].children && comments[i].children.length > 0) {
-          if (updateRecursively(comments[i].children)) {
-            return true;
-          }
-        }
-      }
-      return false;
+        return comment.children && updateRecursively(comment.children);
+      });
     };
-    updateRecursively(this.comments);
-  }  
+  
+    if (updateRecursively(commentsCopy)) {
+      // 3. Re-sort while preserving UI state
+      const sortedComments = this.apiService.buildCommentTree(commentsCopy)
+        .map(comment => this.addUIStateToComment(comment));
+        
+      // 4. Update component state
+      this.comments = sortedComments;
+    }
+  }
   
   private findCommentById(comments: any[], commentId: string): any {
     for (let comment of comments) {

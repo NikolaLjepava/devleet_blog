@@ -17,9 +17,23 @@ const express = require('express')
 const ddbClient = new DynamoDBClient({ region: process.env.TABLE_REGION });
 const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
+const AWS = require('aws-sdk');
+const s3 = new AWS.S3({
+  region: 'eu-north-1',
+  signatureVersion: 'v4'
+});
+
 let tableName = "posts";
 if (process.env.ENV && process.env.ENV !== "NONE") {
   tableName = tableName + '-' + process.env.ENV;
+}
+// Helper function to generate a unique UUID
+function generateCustomUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 const userIdPresent = false; // TODO: update in case is required to use that definition
@@ -54,6 +68,8 @@ const convertUrlType = (param, type) => {
       return param;
   }
 }
+
+
 
 /************************************
 * HTTP Get method to list objects *
@@ -180,39 +196,97 @@ app.put(path, async function(req, res) {
 /************************************
 * HTTP post method for insert object *
 *************************************/
-app.post(path, async function(req, res) {
-  const { id, title, content, userEmail, ...rest } = req.body;
 
-  // Ensure userEmail is present
-  if (!userEmail) {
-    res.statusCode = 400;
-    return res.json({ error: 'userEmail is required' });
-  }
-
-  // Extract username from email
-  const username = userEmail.split('@')[0];
-
-  let putItemParams = {
-    TableName: tableName,
-    Item: {
-      id,
-      title,
-      content,
-      userEmail,
-      username,
-      createdAt: new Date().toISOString(),
-      ...rest // Include any other fields from the request body
-    }
-  };
-
+app.post(path, async (req, res) => {
   try {
-    let data = await ddbDocClient.send(new PutCommand(putItemParams));
-    res.json({ success: 'post call succeed!', url: req.url, data: data });
-  } catch (err) {
-    res.statusCode = 500;
-    res.json({ error: err, url: req.url, body: req.body });
+    const { id, title, content, userEmail, imageData, fileExtension } = req.body;
+    
+    // Validate required fields
+    if (!userEmail || !title || !content) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    let imageUrl = '';
+    if (imageData && fileExtension) {
+      const buffer = Buffer.from(imageData, 'base64');
+      const key = `${generateCustomUUID()}.${fileExtension}`;
+      
+      // Upload to S3
+      await s3.putObject({
+        Bucket: 'images-for-blog',
+        Key: key,
+        Body: buffer,
+        ContentType: `image/${fileExtension}`,
+        ACL: 'public-read'
+      }).promise();
+      
+      imageUrl = `https://images-for-blog.s3.amazonaws.com/${key}`;
+    }
+
+    // Create blog post
+    const putItemParams = {
+      TableName: tableName,
+      Item: {
+        id,
+        title,
+        content,
+        userEmail,
+        username: userEmail.split('@')[0],
+        createdAt: new Date().toISOString(),
+        imageUrl,
+        ...(imageUrl && { hasImage: true }) // Optional: Add image flag
+      }
+    };
+
+    await ddbDocClient.send(new PutCommand(putItemParams));
+    
+    res.json({ 
+      success: 'Post created',
+      imageUrl: imageUrl || null
+    });
+
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ 
+      error: 'Post creation failed',
+      details: error.message 
+    });
   }
 });
+// app.post(path, async function(req, res) {
+//   const { id, title, content, userEmail, imageUrl, ...rest } = req.body;
+
+//   // Ensure userEmail is present
+//   if (!userEmail) {
+//     res.statusCode = 400;
+//     return res.json({ error: 'userEmail is required' });
+//   }
+
+//   // Extract username from email
+//   const username = userEmail.split('@')[0];
+
+//   let putItemParams = {
+//     TableName: tableName,
+//     Item: {
+//       id,
+//       title,
+//       content,
+//       userEmail,
+//       username,
+//       createdAt: new Date().toISOString(),
+//       imageUrl,
+//       ...rest 
+//     }
+//   };
+
+//   try {
+//     let data = await ddbDocClient.send(new PutCommand(putItemParams));
+//     res.json({ success: 'post call succeed!', url: req.url, data: data });
+//   } catch (err) {
+//     res.statusCode = 500;
+//     res.json({ error: err, url: req.url, body: req.body });
+//   }
+// });
 
 
 /**************************************

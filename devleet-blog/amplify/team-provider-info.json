@@ -19,15 +19,15 @@
       "function": {
         "devleetblog": {
           "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
-          "s3Key": "amplify-builds/devleetblog-5052384b5977627a4574-build.zip"
+          "s3Key": "amplify-builds/devleetblog-477535586f45704d6153-build.zip"
         },
         "imageUpload": {
           "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
-          "s3Key": "amplify-builds/imageUpload-5a51316569624761502b-build.zip"
+          "s3Key": "amplify-builds/imageUpload-7a2f492f312b4733546e-build.zip"
         },
         "commentCRUD": {
           "deploymentBucketName": "amplify-devleetblog-dev-159f3-deployment",
-          "s3Key": "amplify-builds/commentCRUD-4c42795375376f465665-build.zip"
+          "s3Key": "amplify-builds/commentCRUD-706467514b4c484f4667-build.zip"
         }
       },
       "storage": {
