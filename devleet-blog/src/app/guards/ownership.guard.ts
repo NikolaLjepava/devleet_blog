@@ -5,6 +5,7 @@ import { switchMap, catchError, map } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 import { BlogService } from '../services/blog.service';
 
+//used for checking if the user is the owner of the post when manually entering the url as a backup guard
 @Injectable({
   providedIn: 'root',
 })

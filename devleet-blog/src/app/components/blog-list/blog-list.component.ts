@@ -23,7 +23,7 @@ export class BlogListComponent implements OnInit, OnDestroy {
   fetchPosts() {
     this.postsSubscription = this.blogService.getPosts().subscribe({
       next: (data) => {
-        // Assuming each post has a 'createdAt' field
+        // Each post has a 'createdAt' field used for sorting
         this.posts = data.sort((a: any, b: any) => {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Sort by createdAt (newest to oldest)
         });
