@@ -1,3 +1,5 @@
+Working blog website built through Angular for Frontend and Node.js using AWS for backend.
+
 start app locally:
 
 1. check if you are in the right directory : cd "C:\Users\Nikola\Desktop\Devleet Blog\devleet_blog-1\devleet-blog"
